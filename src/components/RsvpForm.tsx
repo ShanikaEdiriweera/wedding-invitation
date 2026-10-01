@@ -1,0 +1,77 @@
+import { useMemo, useState, type FormEvent } from 'react'
+import { validateRsvpSubmission, RSVP_LIMITS } from '../lib/rsvp-validation'
+import type { PublicInvitation, RsvpRecord, RsvpService, RsvpSubmission } from '../types/rsvp'
+
+type Attendance = '' | 'yes' | 'no'
+type FormValues = { attendance: Attendance; guests: string[]; dietaryRequirements: string; songRequest: string; message: string }
+const emptyValues: FormValues = { attendance: '', guests: [], dietaryRequirements: '', songRequest: '', message: '' }
+
+export function RsvpForm({ token, invitation, existing, service }: { token: string; invitation: PublicInvitation; existing: RsvpRecord | null; service: RsvpService }) {
+  const initialValues = useMemo<FormValues>(() => existing ? {
+    attendance: existing.attending ? 'yes' : 'no', guests: existing.guests.map((guest) => guest.name),
+    dietaryRequirements: existing.dietaryRequirements, songRequest: existing.songRequest, message: existing.message,
+  } : emptyValues, [existing])
+  const [values, setValues] = useState(initialValues)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [result, setResult] = useState<'success' | 'failure' | null>(null)
+  const namedGuests = [invitation.primaryGuestName, ...invitation.invitedGuestNames]
+  const extraSlots = Math.max(0, invitation.maxGuests - namedGuests.length)
+  const extraGuestNames = values.guests.filter((name) => !namedGuests.includes(name))
+  const attendingNames = new Set(values.guests.map((name) => name.trim().toLowerCase()))
+
+  function setGuest(name: string, checked: boolean) {
+    setValues((current) => ({ ...current, guests: checked ? [...current.guests, name] : current.guests.filter((guest) => guest !== name) }))
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setResult(null)
+    const submission: RsvpSubmission = {
+      attending: values.attendance === 'yes',
+      guests: values.attendance === 'yes' ? values.guests.filter((name) => name.trim()).map((name) => ({ name: name.trim() })) : [],
+      dietaryRequirements: values.dietaryRequirements.trim(), songRequest: values.songRequest.trim(), message: values.message.trim(),
+      honeypot: new FormData(event.currentTarget).get('website')?.toString() ?? '',
+    }
+    const nextErrors = values.attendance ? validateRsvpSubmission(token, invitation, submission) : { attendance: 'Please choose whether you can attend.' }
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length) return
+    setSubmitting(true)
+    void service.submitRsvp(token, submission).then((saved) => {
+      if (saved.status === 'saved') { setValues((current) => ({ ...current, attendance: current.attendance })); setResult('success') }
+      else setResult('failure')
+    }).catch(() => setResult('failure')).finally(() => setSubmitting(false))
+  }
+
+  return <form className="rsvp-form" onSubmit={handleSubmit} noValidate>
+    <p className="rsvp-form__welcome">For {namedGuests.join(' and ')}</p>
+    {existing && <p className="rsvp-form__note">We have your reply. You can update it below.</p>}
+    <fieldset><legend>Will you be joining us?</legend>
+      <label className="choice"><input type="radio" name="attendance" value="yes" checked={values.attendance === 'yes'} onChange={() => setValues((v) => ({ ...v, attendance: 'yes' }))} /> Joyfully accepts</label>
+      <label className="choice"><input type="radio" name="attendance" value="no" checked={values.attendance === 'no'} onChange={() => setValues((v) => ({ ...v, attendance: 'no', guests: [] }))} /> Regretfully declines</label>
+      {errors.attendance && <p className="field-error" role="alert">{errors.attendance}</p>}
+    </fieldset>
+    {values.attendance === 'yes' && <fieldset><legend>Who will attend?</legend>
+      {namedGuests.map((name) => <label className="choice" key={name}><input type="checkbox" checked={attendingNames.has(name.trim().toLowerCase())} onChange={(event) => setGuest(name, event.target.checked)} /> {name}</label>)}
+      {Array.from({ length: extraSlots }, (_, slot) => {
+        const name = extraGuestNames[slot] ?? ''
+        return <label className="field" key={slot}>Additional guest {slot + 1}
+          <input type="text" maxLength={RSVP_LIMITS.guestName} value={name} onChange={(event) => {
+            const extras = [...extraGuestNames]
+            extras[slot] = event.target.value
+            setValues((current) => ({ ...current, guests: [...current.guests.filter((guest) => namedGuests.includes(guest)), ...extras] }))
+          }} placeholder="Guest name" />
+        </label>
+      })}
+      <p className="field-hint">Please select only those who can attend. You may invite up to {extraSlots} additional {extraSlots === 1 ? 'guest' : 'guests'}.</p>
+      {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
+    </fieldset>}
+    <label className="field">Dietary requirements <span>Optional</span><textarea maxLength={RSVP_LIMITS.dietaryRequirements} value={values.dietaryRequirements} onChange={(e) => setValues((v) => ({ ...v, dietaryRequirements: e.target.value }))} rows={3} />{errors.dietaryRequirements && <small className="field-error">{errors.dietaryRequirements}</small>}</label>
+    <label className="field">A song for the celebration <span>Optional</span><input type="text" maxLength={RSVP_LIMITS.songRequest} value={values.songRequest} onChange={(e) => setValues((v) => ({ ...v, songRequest: e.target.value }))} />{errors.songRequest && <small className="field-error">{errors.songRequest}</small>}</label>
+    <label className="field">A message for the couple <span>Optional</span><textarea maxLength={RSVP_LIMITS.message} value={values.message} onChange={(e) => setValues((v) => ({ ...v, message: e.target.value }))} rows={4} />{errors.message && <small className="field-error">{errors.message}</small>}</label>
+    <label className="rsvp-form__trap" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
+    <button className="button button--primary rsvp-form__submit" type="submit" disabled={submitting}>{submitting ? 'Sending…' : existing ? 'Update RSVP' : 'Send RSVP'}</button>
+    {result === 'success' && <p role="status">Thank you. Your reply has been saved.</p>}
+    {result === 'failure' && <p role="alert">We couldn’t save your reply. Your answers are still here; please try again.</p>}
+  </form>
+}

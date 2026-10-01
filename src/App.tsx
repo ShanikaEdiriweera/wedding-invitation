@@ -1,32 +1,52 @@
 import { useLayoutEffect } from 'react'
 import { Footer } from './components/Footer'
+import { GalleryPreview } from './components/GalleryPreview'
 import { CouplePhoto } from './components/CouplePhoto'
 import { Header } from './components/Header'
 import { LoveStory } from './components/LoveStory'
 import { RSVPCallToAction } from './components/RSVPCallToAction'
 import { coupleFullNames, wedding } from './content/wedding'
+import { formatEventDate } from './lib/event-time'
+
+function currentRsvpToken(): string | null {
+  const base = import.meta.env.BASE_URL
+  const fallback = new URLSearchParams(window.location.search).get('__ghPagesRoute')
+  if (fallback && /^rsvp\/[A-Za-z0-9_-]{32}$/.test(fallback)) {
+    window.history.replaceState(null, '', `${base}${fallback}`)
+    return fallback.split('/')[1]
+  }
+
+  const path = window.location.pathname
+  if (!path.startsWith(base)) return null
+  const route = path.slice(base.length).replace(/^\/+|\/+$/g, '')
+  return /^rsvp\/[A-Za-z0-9_-]{32}$/.test(route) ? route.split('/')[1] : null
+}
 
 export default function App() {
+  const token = currentRsvpToken()
+
   useLayoutEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>('.scroll-reveal')
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
     if (!('IntersectionObserver' in window)) return
 
     targets.forEach((target) => target.classList.add('is-pending'))
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.remove('is-pending')
-          entry.target.classList.add('is-revealed')
-          observer.unobserve(entry.target)
-        }
+        if (!entry.isIntersecting) return
+        entry.target.classList.remove('is-pending')
+        entry.target.classList.add('is-revealed')
+        observer.unobserve(entry.target)
       })
     }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' })
 
     targets.forEach((target) => observer.observe(target))
     return () => observer.disconnect()
   }, [])
+
+  if (!token && window.location.pathname !== import.meta.env.BASE_URL && window.location.pathname !== `${import.meta.env.BASE_URL}index.html`) {
+    return <main className="rsvp-page"><h1>Page not found</h1><a href={import.meta.env.BASE_URL}>Return to the wedding website</a></main>
+  }
 
   return (
     <>
@@ -42,7 +62,7 @@ export default function App() {
               <span className="hero__name hero__entrance hero__entrance--4">{wedding.couple.groom.displayName}</span>
             </h1>
             <p className="hero__full-names hero__entrance hero__entrance--5">{coupleFullNames}</p>
-            <time className="hero__date hero__entrance hero__entrance--5" dateTime={wedding.date.iso}>{wedding.date.display}</time>
+            <time className="hero__date hero__entrance hero__entrance--5" dateTime={wedding.eventDateTime}>{formatEventDate(wedding.eventDateTime, wedding.eventTimeZone)}</time>
             <p className="hero__intro hero__entrance hero__entrance--6">A day to gather, celebrate, and make memories together.</p>
             <a className="button button--primary hero__entrance hero__entrance--7" href="#rsvp">RSVP</a>
           </div>
@@ -63,8 +83,8 @@ export default function App() {
                 <h2 id="details-title">You’re Invited to Our Special Day</h2>
                 <dl className="details__list">
                   <div className="details__item">
-                    <dt>{wedding.date.label}</dt>
-                    <dd><time dateTime={wedding.date.iso}>{wedding.date.display}</time></dd>
+                    <dt>{wedding.dateLabel}</dt>
+                    <dd><time dateTime={wedding.eventDateTime}>{formatEventDate(wedding.eventDateTime, wedding.eventTimeZone)}</time></dd>
                   </div>
                   <div className="details__item">
                     <dt>{wedding.schedule.ceremony.label}</dt>
@@ -79,8 +99,9 @@ export default function App() {
                     <dd>{wedding.venue.room}, {wedding.venue.hotel}</dd>
                   </div>
                 </dl>
-                <div className="venue-links" aria-label="Map">
-                  <a className="text-link" href={wedding.venue.map}>View Map</a>
+                <div className="venue-links" aria-label="Venue links">
+                  <a className="text-link" href={wedding.venue.website}>Venue information</a>
+                  <a className="text-link" href={wedding.venue.map}>View map</a>
                 </div>
                 <a className="button button--primary details__rsvp scroll-reveal scroll-reveal--delay-3" href="#rsvp">RSVP</a>
               </div>
@@ -88,7 +109,8 @@ export default function App() {
           </div>
         </section>
 
-        <RSVPCallToAction />
+        <GalleryPreview />
+        <RSVPCallToAction token={token ?? undefined} />
       </main>
       <Footer />
     </>

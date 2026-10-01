@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Opening invitation…</title></head>
+  <body><script>
+    (function () {
+      var base = '/wedding-invitation/';
+      var path = window.location.pathname;
+      var route = path.indexOf(base) === 0 ? path.slice(base.length).replace(/^\/+|\/+$/g, '') : '';
+      if (/^rsvp\/[A-Za-z0-9_-]{32}$/.test(route)) {
+        window.location.replace(base + '?__ghPagesRoute=' + encodeURIComponent(route));
+      } else {
+        window.location.replace(base);
+      }
+    }());
+  </script></body>
+</html>

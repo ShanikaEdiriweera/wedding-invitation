@@ -9,11 +9,9 @@ export const wedding = {
       displayName: 'Dakshin',
     },
   },
-  date: {
-    label: 'Date',
-    iso: '2026-12-28',
-    display: '28 December 2026',
-  },
+  eventDateTime: '2026-12-28T09:00:00+05:30',
+  eventTimeZone: 'Asia/Colombo',
+  dateLabel: 'Date',
   detailsTitle: 'Wedding details',
   schedule: {
     ceremony: {
