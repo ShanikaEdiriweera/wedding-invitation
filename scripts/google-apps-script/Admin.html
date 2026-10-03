@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RSVP Sheet setup</title>
+  <style>
+    body { max-width: 38rem; margin: 3rem auto; padding: 0 1rem; color: #2e3028; font: 16px/1.5 Arial, sans-serif; }
+    h1 { font-size: 1.65rem; }
+    label { display: block; margin: 1rem 0 .35rem; }
+    input { box-sizing: border-box; width: 100%; padding: .7rem; font: inherit; }
+    button { margin: 1rem .5rem 0 0; padding: .7rem 1rem; font: inherit; cursor: pointer; }
+    #message { min-height: 1.5rem; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>RSVP Google Sheet setup</h1>
+    <p>Enter the setup passphrase configured in Apps Script. It is held only in this page while it is open.</p>
+    <label for="passphrase">Setup passphrase</label>
+    <input id="passphrase" type="password" autocomplete="current-password" required>
+    <div>
+      <button id="status" type="button">Check connection</button>
+      <button id="connect" type="button">Connect Google Sheet</button>
+      <button id="disconnect" type="button" hidden>Disconnect</button>
+    </div>
+    <p id="message" role="status" aria-live="polite"></p>
+    <p id="connection" hidden></p>
+  </main>
+  <script>
+    (function () {
+      var passphrase = document.getElementById('passphrase');
+      var message = document.getElementById('message');
+      var connection = document.getElementById('connection');
+      var disconnect = document.getElementById('disconnect');
+      var busy = false;
+      function setMessage(text) { message.textContent = text; }
+      function run(name, args, callback) {
+        if (busy) return;
+        if (!passphrase.value) { setMessage('Enter the setup passphrase first.'); passphrase.focus(); return; }
+        busy = true;
+        setMessage('Working…');
+        var runner = google.script.run
+          .withSuccessHandler(function (result) { busy = false; callback(null, result); })
+          .withFailureHandler(function () { busy = false; setMessage('Request failed. Check the passphrase and try again.'); });
+        runner[name].apply(runner, args);
+      }
+      function refreshStatus() {
+        run('rsvpAdminGetStatus', [passphrase.value], function (error, result) {
+          if (!result.connected) {
+            connection.hidden = true;
+            disconnect.hidden = true;
+            setMessage(result.error || 'No Sheet is connected.');
+            return;
+          }
+          connection.textContent = 'Connected to: ' + result.spreadsheetName;
+          connection.hidden = false;
+          disconnect.hidden = false;
+          setMessage('Connection verified.');
+        });
+      }
+      document.getElementById('status').addEventListener('click', refreshStatus);
+      document.getElementById('connect').addEventListener('click', function () {
+        var popup = window.open('about:blank', '_blank');
+        run('rsvpAdminStartConnect', [passphrase.value], function (error, result) {
+          if (!result || !result.authorizationUrl) {
+            if (popup) popup.close();
+            setMessage('Could not start Google authorization. Check Apps Script configuration.');
+            return;
+          }
+          if (popup) popup.location.href = result.authorizationUrl;
+          else {
+            var link = document.createElement('a');
+            link.href = result.authorizationUrl;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = 'Open Google authorization';
+            message.textContent = 'Continue to Google: ';
+            message.appendChild(link);
+          }
+          if (popup) setMessage('Continue in the Google authorization tab to select the RSVP Sheet.');
+        });
+      });
+      disconnect.addEventListener('click', function () {
+        if (!window.confirm('Disconnect this Google Sheet? The spreadsheet itself will not be changed.')) return;
+        run('rsvpAdminDisconnect', [passphrase.value], function (_error, result) {
+          connection.hidden = true;
+          disconnect.hidden = true;
+          setMessage(result && result.authorizationRevoked
+            ? 'Google authorization and Sheet configuration disconnected.'
+            : 'Local Sheet configuration cleared. Google could not confirm revocation; remove this app from your Google Account security settings if you want to revoke its grant.');
+        });
+      });
+    }());
+  </script>
+</body>
+</html>

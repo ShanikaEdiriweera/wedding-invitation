@@ -1,8 +1,17 @@
 var INVITATION_HEADERS = ['Invitation Token', 'Primary Guest Name', 'Email', 'Invited Guest Names', 'Max Guests', 'Active', 'Created At', 'Revoked At'];
 var RESPONSE_HEADERS = ['Invitation Token', 'RSVP ID', 'Submitted At', 'Updated At', 'Attending', 'Guest Count', 'Guest Names', 'Dietary Requirements', 'Song Request', 'Message'];
+var OAUTH_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+var GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+var GOOGLE_SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets/';
+var GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
+var OAUTH_PROPERTY_KEYS = ['GOOGLE_REFRESH_TOKEN', 'GOOGLE_ACCESS_TOKEN', 'GOOGLE_ACCESS_TOKEN_EXPIRES_AT', 'SPREADSHEET_ID', 'SPREADSHEET_NAME'];
 
-function doGet() {
-  var parentOrigin = PropertiesService.getScriptProperties().getProperty('ALLOWED_PARENT_ORIGIN');
+function doGet(e) {
+  var properties = PropertiesService.getScriptProperties();
+  if (e && e.parameter && e.parameter.admin === '1') {
+    return HtmlService.createHtmlOutputFromFile('Admin').setTitle('RSVP Sheet setup');
+  }
+  var parentOrigin = properties.getProperty('ALLOWED_PARENT_ORIGIN');
   if (!parentOrigin) return HtmlService.createHtmlOutput('RSVP service is not configured.');
   return HtmlService.createTemplateFromFile('Bridge').evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -24,8 +33,7 @@ function rsvpBridgeGetRsvp(token) {
   var invitation = findInvitation_(token);
   if (!invitation) return { status: 'not-found' };
   if (!invitation.active) return { status: 'revoked' };
-  var sheet = spreadsheet_().getSheetByName('Responses');
-  var values = sheet.getDataRange().getValues();
+  var values = readSheetRange_('Responses!A:J');
   for (var i = 1; i < values.length; i++) {
     if (String(values[i][0]) === token) return { status: 'active', rsvp: responseFromRow_(values[i]) };
   }
@@ -41,8 +49,7 @@ function rsvpBridgeSubmitRsvp(token, rsvp) {
     if (!invitation) return { status: 'not-found' };
     if (!invitation.active) return { status: 'revoked' };
     if (RsvpValidation.validate(invitation, rsvp).length) throw new Error('invalid');
-    var sheet = spreadsheet_().getSheetByName('Responses');
-    var values = sheet.getDataRange().getValues();
+    var values = readSheetRange_('Responses!A:J');
     var existingRow = -1;
     for (var i = 1; i < values.length; i++) if (String(values[i][0]) === token) { existingRow = i + 1; break; }
     var now = new Date().toISOString();
@@ -57,9 +64,8 @@ function rsvpBridgeSubmitRsvp(token, rsvp) {
       dietaryRequirements: rsvp.dietaryRequirements.trim(), songRequest: rsvp.songRequest.trim(), message: rsvp.message.trim()
     };
     var row = [token, record.rsvpId, record.submittedAt, now, record.attending, record.guests.length, JSON.stringify(record.guests), record.dietaryRequirements, record.songRequest, record.message];
-    row = row.map(asSafeCell_);
-    if (existingRow > 0) sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
-    else sheet.appendRow(row);
+    if (existingRow > 0) writeSheetRow_('Responses!A' + existingRow + ':J' + existingRow, row);
+    else appendSheetRow_('Responses!A:J', row);
     return { status: 'saved', rsvp: record };
   } catch (error) {
     throw new Error('Unable to save RSVP.');
@@ -68,27 +74,9 @@ function rsvpBridgeSubmitRsvp(token, rsvp) {
   }
 }
 
-function spreadsheet_() {
-  var id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
-  if (!id) throw new Error('Not configured');
-  var book = SpreadsheetApp.openById(id);
-  var invitations = book.getSheetByName('Invitations');
-  var responses = book.getSheetByName('Responses');
-  if (!invitations || !responses) throw new Error('Missing sheets');
-  assertHeaders_(invitations, INVITATION_HEADERS);
-  assertHeaders_(responses, RESPONSE_HEADERS);
-  return book;
-}
-
-function assertHeaders_(sheet, expected) {
-  var actual = sheet.getRange(1, 1, 1, expected.length).getDisplayValues()[0];
-  if (expected.some(function (name, index) { return actual[index] !== name; })) throw new Error('Invalid sheet headers');
-}
-
 function findInvitation_(token) {
   if (!RsvpValidation.isToken(token)) return null;
-  var sheet = spreadsheet_().getSheetByName('Invitations');
-  var rows = sheet.getDataRange().getValues();
+  var rows = readSheetRange_('Invitations!A:H');
   for (var i = 1; i < rows.length; i++) if (String(rows[i][0]) === token) {
     var guests;
     try { guests = JSON.parse(String(rows[i][3] || '[]')); } catch (e) { return null; }
@@ -104,7 +92,246 @@ function responseFromRow_(row) {
   return { invitationToken: String(row[0]), rsvpId: String(row[1]), submittedAt: String(row[2]), updatedAt: String(row[3]), attending: row[4] === true || String(row[4]).toLowerCase() === 'true', guests: guests, dietaryRequirements: String(row[7] || ''), songRequest: String(row[8] || ''), message: String(row[9] || '') };
 }
 
-function asSafeCell_(value) {
-  var text = String(value == null ? '' : value);
-  return /^[=+@\-]/.test(text) ? "'" + text : text;
+function readSheetRange_(range) {
+  ensureSpreadsheetReady_();
+  var response = sheetsRequest_('get', 'values/' + encodeURIComponent(range));
+  return response.values || [];
+}
+
+function writeSheetRow_(range, row) {
+  ensureSpreadsheetReady_();
+  sheetsRequest_('put', 'values/' + encodeURIComponent(range) + '?valueInputOption=RAW', { range: range, majorDimension: 'ROWS', values: [row] });
+}
+
+function appendSheetRow_(range, row) {
+  ensureSpreadsheetReady_();
+  sheetsRequest_('post', 'values/' + encodeURIComponent(range) + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', { majorDimension: 'ROWS', values: [row] });
+}
+
+function ensureSpreadsheetReady_() {
+  var properties = PropertiesService.getScriptProperties();
+  var id = properties.getProperty('SPREADSHEET_ID');
+  if (!id || !/^[A-Za-z0-9_-]{20,}$/.test(id)) throw new Error('RSVP sheet is not connected.');
+  var token = googleAccessToken_();
+  var metadata = googleApiRequest_(token, 'get', encodeURIComponent(id) + '?fields=spreadsheetId,properties(title),sheets(properties(title))');
+  var names = (metadata.sheets || []).map(function (sheet) { return sheet.properties && sheet.properties.title; });
+  if (names.indexOf('Invitations') < 0 || names.indexOf('Responses') < 0) throw new Error('Required RSVP tabs are missing.');
+  var headers = googleApiRequest_(token, 'get', encodeURIComponent(id) + '/values:batchGet?ranges=' + encodeURIComponent('Invitations!A1:H1') + '&ranges=' + encodeURIComponent('Responses!A1:J1'));
+  var ranges = headers.valueRanges || [];
+  if (!sameHeaders_(ranges[0] && ranges[0].values && ranges[0].values[0], INVITATION_HEADERS) ||
+      !sameHeaders_(ranges[1] && ranges[1].values && ranges[1].values[0], RESPONSE_HEADERS)) throw new Error('RSVP sheet headers do not match.');
+  properties.setProperty('SPREADSHEET_NAME', String(metadata.properties && metadata.properties.title || ''));
+  return { id: id, name: String(metadata.properties && metadata.properties.title || '') };
+}
+
+function sameHeaders_(actual, expected) {
+  return Array.isArray(actual) && expected.length === actual.length && expected.every(function (name, index) { return actual[index] === name; });
+}
+
+function sheetsRequest_(method, path, payload) {
+  ensureSpreadsheetReady_();
+  var id = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  return googleApiRequest_(googleAccessToken_(), method, encodeURIComponent(id) + '/' + path, payload);
+}
+
+function googleApiRequest_(token, method, path, payload) {
+  var response = UrlFetchApp.fetch(GOOGLE_SHEETS_API + path, {
+    method: method,
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token },
+    payload: payload ? JSON.stringify(payload) : undefined,
+    muteHttpExceptions: true
+  });
+  var status = response.getResponseCode();
+  var body = response.getContentText();
+  if (status < 200 || status >= 300) throw new Error(mapGoogleError_(status, body));
+  return body ? JSON.parse(body) : {};
+}
+
+function googleAccessToken_() {
+  var properties = PropertiesService.getScriptProperties();
+  var refreshToken = properties.getProperty('GOOGLE_REFRESH_TOKEN');
+  if (!refreshToken) throw new Error('Google Sheet is not connected.');
+  var expiresAt = Number(properties.getProperty('GOOGLE_ACCESS_TOKEN_EXPIRES_AT') || 0);
+  var cached = properties.getProperty('GOOGLE_ACCESS_TOKEN');
+  if (cached && Date.now() < expiresAt - 60000) return cached;
+  var response = UrlFetchApp.fetch(GOOGLE_TOKEN_URL, {
+    method: 'post',
+    payload: {
+      client_id: requiredProperty_('GOOGLE_CLIENT_ID'),
+      client_secret: requiredProperty_('GOOGLE_CLIENT_SECRET'),
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    },
+    muteHttpExceptions: true
+  });
+  var status = response.getResponseCode();
+  var body = response.getContentText();
+  var result = parseJson_(body);
+  if (status < 200 || status >= 300 || !result.access_token) {
+    if (result.error === 'invalid_grant') {
+      properties.deleteProperty('GOOGLE_REFRESH_TOKEN');
+      properties.deleteProperty('GOOGLE_ACCESS_TOKEN');
+      properties.deleteProperty('GOOGLE_ACCESS_TOKEN_EXPIRES_AT');
+      throw new Error('Google authorization expired. Reconnect the RSVP Sheet.');
+    }
+    throw new Error('Unable to refresh Google authorization.');
+  }
+  properties.setProperty('GOOGLE_ACCESS_TOKEN', result.access_token);
+  properties.setProperty('GOOGLE_ACCESS_TOKEN_EXPIRES_AT', String(Date.now() + Number(result.expires_in || 3600) * 1000));
+  return result.access_token;
+}
+
+function mapGoogleError_(status, body) {
+  var data = parseJson_(body);
+  var reason = data.error && (data.error.status || data.error.message || data.error);
+  if (status === 404) return 'The configured RSVP spreadsheet was not found or is not authorized.';
+  if (status === 401 || status === 403) return 'The Google account no longer has access to the RSVP spreadsheet. Reconnect it.';
+  if (status === 429 || status >= 500) return 'Google Sheets is temporarily unavailable. Try again later.';
+  return 'Google Sheets request failed (' + status + (reason ? ': ' + String(reason).slice(0, 120) : '') + ').';
+}
+
+function parseJson_(text) {
+  try { return JSON.parse(text || '{}'); } catch (e) { return {}; }
+}
+
+function requiredProperty_(key) {
+  var value = PropertiesService.getScriptProperties().getProperty(key);
+  if (!value) throw new Error('Missing Script Property: ' + key);
+  return value;
+}
+
+function oauthCallback(request) {
+  var parameters = request && request.parameter || {};
+  var properties = PropertiesService.getScriptProperties();
+  var expectedNonce = properties.getProperty('OAUTH_PENDING_NONCE');
+  if (!expectedNonce || !parameters.oauthNonce || parameters.oauthNonce !== expectedNonce) return oauthResultPage_('OAuth state could not be verified. Start the connection again.');
+  properties.deleteProperty('OAUTH_PENDING_NONCE');
+  if (parameters.error) return oauthResultPage_('Google authorization was denied. No connection was changed.');
+  if (!parameters.code || !parameters.picked_file_ids) return oauthResultPage_('No spreadsheet was selected. No connection was changed.');
+  var ids = String(parameters.picked_file_ids).split(',').filter(Boolean);
+  if (ids.length !== 1 || !/^[A-Za-z0-9_-]{20,}$/.test(ids[0])) return oauthResultPage_('Select exactly one Google spreadsheet.');
+
+  var tokenResponse = UrlFetchApp.fetch(GOOGLE_TOKEN_URL, {
+    method: 'post',
+    payload: {
+      code: parameters.code,
+      client_id: requiredProperty_('GOOGLE_CLIENT_ID'),
+      client_secret: requiredProperty_('GOOGLE_CLIENT_SECRET'),
+      redirect_uri: oauthRedirectUri_(),
+      grant_type: 'authorization_code'
+    },
+    muteHttpExceptions: true
+  });
+  var token = parseJson_(tokenResponse.getContentText());
+  if (tokenResponse.getResponseCode() < 200 || tokenResponse.getResponseCode() >= 300 || !token.access_token) return oauthResultPage_('Google authorization could not be completed. No connection was changed.');
+  if (!token.refresh_token) return oauthResultPage_('Google did not return offline access. Reconnect and approve the requested access.');
+
+  var sheet;
+  try {
+    sheet = verifySelectedSpreadsheet_(token.access_token, ids[0]);
+  } catch (error) {
+    revokeToken_(token.refresh_token);
+    return oauthResultPage_(safeAdminError_(error));
+  }
+  properties.setProperty('GOOGLE_REFRESH_TOKEN', token.refresh_token);
+  properties.setProperty('GOOGLE_ACCESS_TOKEN', token.access_token);
+  properties.setProperty('GOOGLE_ACCESS_TOKEN_EXPIRES_AT', String(Date.now() + Number(token.expires_in || 3600) * 1000));
+  properties.setProperty('SPREADSHEET_ID', ids[0]);
+  properties.setProperty('SPREADSHEET_NAME', sheet.name);
+  return oauthResultPage_('Connected to “' + escapeHtml_(sheet.name) + '”. You can close this tab and return to setup.');
+}
+
+function verifySelectedSpreadsheet_(accessToken, spreadsheetId) {
+  var metadata = googleApiRequest_(accessToken, 'get', encodeURIComponent(spreadsheetId) + '?fields=spreadsheetId,properties(title),sheets(properties(title))');
+  var names = (metadata.sheets || []).map(function (sheet) { return sheet.properties && sheet.properties.title; });
+  if (names.indexOf('Invitations') < 0 || names.indexOf('Responses') < 0) throw new Error('The selected spreadsheet must contain Invitations and Responses tabs.');
+  var headers = googleApiRequest_(accessToken, 'get', encodeURIComponent(spreadsheetId) + '/values:batchGet?ranges=' + encodeURIComponent('Invitations!A1:H1') + '&ranges=' + encodeURIComponent('Responses!A1:J1'));
+  var ranges = headers.valueRanges || [];
+  if (!sameHeaders_(ranges[0] && ranges[0].values && ranges[0].values[0], INVITATION_HEADERS) ||
+      !sameHeaders_(ranges[1] && ranges[1].values && ranges[1].values[0], RESPONSE_HEADERS)) throw new Error('The selected spreadsheet headers do not match the RSVP format.');
+  return { name: String(metadata.properties && metadata.properties.title || 'RSVP spreadsheet') };
+}
+
+function oauthResultPage_(message) {
+  return HtmlService.createHtmlOutput('<!doctype html><meta charset="utf-8"><title>RSVP Sheet connection</title><p>' + escapeHtml_(message) + '</p>');
+}
+
+function escapeHtml_(value) {
+  return String(value).replace(/[&<>"']/g, function (character) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character];
+  });
+}
+
+function oauthRedirectUri_() {
+  var scriptId = ScriptApp.getScriptId();
+  if (!scriptId) throw new Error('Apps Script ID is unavailable.');
+  return 'https://script.google.com/macros/d/' + encodeURIComponent(scriptId) + '/usercallback';
+}
+
+function rsvpAdminGetStatus(passphrase) {
+  requireAdmin_(passphrase);
+  var properties = PropertiesService.getScriptProperties();
+  var id = properties.getProperty('SPREADSHEET_ID');
+  if (!id || !properties.getProperty('GOOGLE_REFRESH_TOKEN')) return { connected: false };
+  try {
+    var sheet = ensureSpreadsheetReady_();
+    return { connected: true, spreadsheetName: sheet.name };
+  } catch (error) {
+    return { connected: false, spreadsheetName: properties.getProperty('SPREADSHEET_NAME') || '', error: safeAdminError_(error) };
+  }
+}
+
+function rsvpAdminStartConnect(passphrase) {
+  requireAdmin_(passphrase);
+  var properties = PropertiesService.getScriptProperties();
+  var clientId = requiredProperty_('GOOGLE_CLIENT_ID');
+  requiredProperty_('GOOGLE_CLIENT_SECRET');
+  var redirectUri = oauthRedirectUri_();
+  var nonce = Utilities.getUuid();
+  properties.setProperty('OAUTH_PENDING_NONCE', nonce);
+  var state = ScriptApp.newStateToken().withMethod('oauthCallback').withArgument('oauthNonce', nonce).withTimeout(900).createToken();
+  var params = {
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: OAUTH_SCOPE,
+    access_type: 'offline',
+    prompt: 'consent',
+    trigger_onepick: 'true',
+    state: state
+  };
+  return { authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth?' + Object.keys(params).map(function (key) { return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]); }).join('&') };
+}
+
+function rsvpAdminDisconnect(passphrase) {
+  requireAdmin_(passphrase);
+  var properties = PropertiesService.getScriptProperties();
+  var refreshToken = properties.getProperty('GOOGLE_REFRESH_TOKEN');
+  var authorizationRevoked = !refreshToken || revokeToken_(refreshToken);
+  OAUTH_PROPERTY_KEYS.forEach(function (key) { properties.deleteProperty(key); });
+  properties.deleteProperty('OAUTH_PENDING_NONCE');
+  return { disconnected: true, authorizationRevoked: authorizationRevoked };
+}
+
+function requireAdmin_(passphrase) {
+  var expected = requiredProperty_('ADMIN_SETUP_PASSPHRASE');
+  if (typeof passphrase !== 'string' || !passphrase || passphrase !== expected) throw new Error('Admin authorization failed.');
+}
+
+function revokeToken_(token) {
+  try {
+    var response = UrlFetchApp.fetch(GOOGLE_REVOKE_URL, { method: 'post', payload: { token: token }, muteHttpExceptions: true });
+    return response.getResponseCode() >= 200 && response.getResponseCode() < 300;
+  } catch (e) {
+    return false;
+  }
+}
+
+function safeAdminError_(error) {
+  var message = String(error && error.message || '');
+  if (/headers do not match|tabs are missing|must contain Invitations/.test(message)) return message;
+  if (/expired|Reconnect|not connected/i.test(message)) return 'Google authorization expired or is unavailable. Reconnect the Sheet.';
+  if (/not found|not authorized|permission|forbidden|access/i.test(message)) return 'The selected spreadsheet could not be accessed by this application.';
+  return 'The spreadsheet could not be verified. Check the selected file and required RSVP tabs and headers.';
 }
