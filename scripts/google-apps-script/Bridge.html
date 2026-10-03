@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><base target="_top"></head><body>
+<script>
+  (function () {
+    var channel = 'wedding-rsvp-bridge';
+    var params = new URLSearchParams(window.location.search);
+    var allowedParent = '<?= PropertiesService.getScriptProperties().getProperty("ALLOWED_PARENT_ORIGIN") ?>';
+    if (!allowedParent || params.get('parentOrigin') !== allowedParent || window.parent === window) return;
+    var parentOrigin = allowedParent;
+    window.parent.postMessage({ channel: channel, type: 'ready' }, parentOrigin);
+    window.addEventListener('message', function (event) {
+      if (event.source !== window.parent || event.origin !== parentOrigin) return;
+      var message = event.data;
+      if (!message || message.channel !== channel || message.type !== 'request' || typeof message.id !== 'string') return;
+      var methods = { getInvitation: 'rsvpBridgeGetInvitation', getRsvp: 'rsvpBridgeGetRsvp', submitRsvp: 'rsvpBridgeSubmitRsvp' };
+      var method = methods[message.method];
+      if (!method) return;
+      var payload = message.payload || {};
+      var runner = google.script.run.withSuccessHandler(function (result) {
+        window.parent.postMessage({ channel: channel, type: 'response', id: message.id, ok: true, result: result }, parentOrigin);
+      }).withFailureHandler(function () {
+        window.parent.postMessage({ channel: channel, type: 'response', id: message.id, ok: false }, parentOrigin);
+      });
+      if (message.method === 'submitRsvp') runner[method](payload.token, payload.rsvp);
+      else runner[method](payload.token);
+    });
+  }());
+</script></body></html>

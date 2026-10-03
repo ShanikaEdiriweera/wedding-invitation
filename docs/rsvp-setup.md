@@ -1,0 +1,82 @@
+# RSVP service setup (manual, after review)
+
+The React application is disconnected until `VITE_RSVP_BRIDGE_URL` is provided in an untracked `.env.local`. No spreadsheet ID, Apps Script deployment URL, guest list, or token is stored in this repository.
+
+## Invitation links and private data
+
+Create a private JSON file outside version control with this shape:
+
+```json
+[
+  { "primaryGuestName": "Guest name", "invitedGuestNames": ["Named household guest"], "email": "private@example.com", "maxGuests": 3 }
+]
+```
+
+Run `node scripts/generate-invitations.mjs private-invitations.json invitation-import.csv`. The script generates 24 cryptographically random bytes per row and encodes each as 32 URL-safe characters. It writes import-ready CSV with restrictive local permissions. Do not commit the input, CSV, exported sheet, or tokens. The email is private to the `Invitations` sheet and is never returned to the browser. When the final site URL is known, each link is `<site-origin>/wedding-invitation/rsvp/<token>`.
+
+These links are bearer credentials: anyone who receives or forwards a link can view and change that invitation’s reply. There is no identity verification, account, or email collection in the guest form. Keep the guest sheet private and revoke links by setting `Active` false.
+
+## Google Sheet
+
+Create a private spreadsheet with two tabs and these exact header rows:
+
+`Invitations`: `Invitation Token`, `Primary Guest Name`, `Email`, `Invited Guest Names`, `Max Guests`, `Active`, `Created At`, `Revoked At`.
+
+`Responses`: `Invitation Token`, `RSVP ID`, `Submitted At`, `Updated At`, `Attending`, `Guest Count`, `Guest Names`, `Dietary Requirements`, `Song Request`, `Message`.
+
+Store `Invited Guest Names` and `Guest Names` as JSON arrays in cells (for example `["Alex"]`). Keep the sheet restricted to the couple and trusted administrators. `maxGuests` counts everyone including the primary invitee. The named guest list must fit within this number; remaining seats are unnamed guest slots.
+
+## Google Cloud OAuth setup
+
+The Apps Script accesses the Sheet using the wedding administrator's OAuth grant. The Apps Script deployer does not need Drive permission to the Sheet.
+
+**Trust boundary:** The refresh token must be stored server-side for anonymous guest requests to work. The Google account that owns or can edit the Apps Script project can also read Script Properties or change the code, and therefore could use that token to access the selected file through the API. This setup removes Account A's ordinary Drive sharing permission; it cannot make Account A technically unable to access data while Account A controls the Apps Script project. If that stronger separation is required, the Apps Script owner must not control the component that stores the OAuth token.
+
+1. Create or select a Google Cloud project, then enable the **Google Sheets API**.
+2. Configure the OAuth consent screen and create an OAuth client with application type **Web application**.
+3. Link the Apps Script project to this standard Google Cloud project from Apps Script **Project Settings → Google Cloud Platform (GCP) Project**. The OAuth client and enabled Sheets API must belong to that linked project.
+4. In Apps Script, open **Project Settings** and copy the script ID. Register this exact redirect URI in the OAuth client:
+
+   `https://script.google.com/macros/d/<SCRIPT_ID>/usercallback`
+
+5. Request only `https://www.googleapis.com/auth/drive.file`. The setup flow uses Google's OAuth-triggered Picker, which returns the selected file ID with the callback. It does not browse or search the administrator's Drive.
+6. Do not create an API key for this flow. The OAuth access token authorizes the Sheets API requests. The non-sensitive `drive.file` scope avoids sensitive/restricted-scope verification; follow any current Google consent-screen or app-branding requirements shown for the Cloud project. While the consent screen is in **Testing**, add the administrator as a test user and expect Google's testing-mode refresh-token lifetime limits. Publish the consent screen as needed for continued use.
+
+## Apps Script installation and deployment
+
+Source is in `scripts/google-apps-script/`. Copy `Code.gs`, `Validation.gs`, `Bridge.html`, `Admin.html`, and `appsscript.json` into the existing standalone Apps Script project. Keep this as the existing project; do not create another deployment service.
+
+In **Project Settings → Script Properties**, configure:
+
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from the OAuth client. Keep the secret server-side.
+- `ADMIN_SETUP_PASSPHRASE` as a long, randomly generated passphrase. Anyone with it can replace or disconnect the RSVP Sheet connection.
+- `ALLOWED_PARENT_ORIGIN` as the exact published site origin (scheme and host only; no path or trailing slash). For a GitHub Pages project site, this is `https://<OWNER>.github.io`, not the `/wedding-invitation` path.
+
+Do not set `SPREADSHEET_ID` manually. The OAuth callback stores it only after the administrator selects a Google Sheet and the application verifies the required tabs and headers. The callback also stores the Sheet name and refresh token in Script Properties.
+
+Deploy the web app from the existing project with **Execute as: Me** (the Apps Script deployer) and **Who has access: Anyone** so guests can use the bridge without signing in. The deployer authorizes the script's external-request and state-token scopes, but is not granted access to the RSVP Sheet. Update the existing deployment after code changes.
+
+Set the admin passphrase in Script Properties before opening:
+
+`<Apps Script /exec URL>?admin=1`
+
+Enter the passphrase, choose **Connect Google Sheet**, sign in as the account that owns the Sheet, approve the `drive.file` permission, and select the RSVP spreadsheet. The callback confirms the exact tabs and headers before replacing any existing configuration. The status button checks that the stored authorization still works. Disconnect revokes the grant where possible and clears the token and spreadsheet properties; it does not edit the Sheet. If Google does not confirm revocation, remove the app from the administrator's Google Account security settings.
+
+For local development, put the Apps Script `/exec` URL in the untracked `.env.local` as `VITE_RSVP_BRIDGE_URL`. For GitHub Pages, open **Repository → Settings → Secrets and variables → Actions → Variables**, create a repository variable named `VITE_RSVP_BRIDGE_URL`, and set its value to that same `/exec` URL. The deployment workflow passes this variable into `npm run build`; Vite embeds it in the public site bundle, so it is a URL, not a secret. Do not commit `.env.local` or the production deployment URL.
+
+The iframe uses `google.script.run` RPC and validates the parent origin in both directions. `ALLOWALL` enables framing, so the exact trusted origin check in `Bridge.html` is required. The parent also checks the iframe's `event.source` and Apps Script origin. The server locks response upserts by invitation token; updates preserve the original submission ID/time. Validation is performed in browser and again on the server. No invitation email or OAuth token is sent to the guest client.
+
+## API contract
+
+The bridge supports `getInvitation({token})`, `getRsvp({token})`, and `submitRsvp({token, rsvp})`.
+
+- Invitation lookup returns `active` with only primary name, named guest names, and max guests; `not-found` or `revoked` contains no invitation data.
+- RSVP lookup returns `active` with a response or `null`; revoked and unknown invitations remain distinct.
+- Submit returns `saved` with the stored response or an invitation state. Declines are stored as `attending: false` and an empty guest array. Acceptances require at least one named attendee.
+- Name, dietary, song, and message limits are 100, 500, 120, and 1,000 characters. An invitation allows at most 20 total guests.
+
+Guest-facing messages are generic and do not display technical errors. The Apps Script does not log guest data.
+
+## Manual verification after setup
+
+Use a separate test spreadsheet and test deployment, never the live guest sheet. Share the test Sheet only with Account B, and confirm the Apps Script deployer Account A has no normal Drive access. Connect from the admin page and verify the selected spreadsheet name, tab/header checks, and rejected selection of an unauthorized file. Then verify acceptance, partial household attendance, an unnamed guest, decline, response update, revoked and unknown links, access-token refresh, disconnect/reconnect, and a deliberately failed API request. Check on a phone-sized viewport and confirm guest errors stay generic. This repository cannot perform the live two-account OAuth flow without a user-owned Cloud OAuth client and test deployment.

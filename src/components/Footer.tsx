@@ -1,7 +1,10 @@
 import { coupleDisplayName, wedding } from '../content/wedding'
+import { formatEventDate } from '../lib/event-time'
 
 const footerLinks = [
+  { href: '#welcome', label: 'Our story' },
   { href: '#details', label: 'The day' },
+  { href: '#gallery', label: 'Gallery' },
   { href: '#rsvp', label: 'RSVP' },
 ]
 
@@ -9,7 +12,7 @@ export function Footer() {
   return (
     <footer className="site-footer">
       <a className="site-footer__brand scroll-reveal" href="#home">{coupleDisplayName}</a>
-      <p className="site-footer__date scroll-reveal scroll-reveal--delay-1">{wedding.date.display}</p>
+      <p className="site-footer__date scroll-reveal scroll-reveal--delay-1">{formatEventDate(wedding.eventDateTime, wedding.eventTimeZone)}</p>
       <nav aria-label="Footer navigation" className="site-footer__nav scroll-reveal scroll-reveal--delay-2">
         {footerLinks.map((link) => <a href={link.href} key={link.href}>{link.label}</a>)}
       </nav>

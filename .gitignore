@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.local
 *.tsbuildinfo
+private-invitations*.json
+invitation-import*.csv

@@ -27,7 +27,11 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Run tests
+        run: npm test
       - name: Build site
+        env:
+          VITE_RSVP_BRIDGE_URL: ${{ vars.VITE_RSVP_BRIDGE_URL }}
         run: npm run build
       - name: Configure Pages
         uses: actions/configure-pages@v5
