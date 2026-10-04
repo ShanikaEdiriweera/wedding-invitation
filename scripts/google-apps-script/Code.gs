@@ -13,7 +13,13 @@ function doGet(e) {
   }
   var parentOrigin = properties.getProperty('ALLOWED_PARENT_ORIGIN');
   if (!parentOrigin) return HtmlService.createHtmlOutput('RSVP service is not configured.');
-  return HtmlService.createTemplateFromFile('Bridge').evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  if (!e || !e.parameter || e.parameter.parentOrigin !== parentOrigin) return HtmlService.createHtmlOutput('RSVP parent origin is not allowed.');
+  var bridgeNonce = e && e.parameter && e.parameter.bridgeNonce;
+  if (!bridgeNonce || !/^[A-Za-z0-9-]{20,80}$/.test(bridgeNonce)) return HtmlService.createHtmlOutput('Invalid RSVP bridge request.');
+  var bridge = HtmlService.createTemplateFromFile('Bridge');
+  bridge.allowedParentOrigin = parentOrigin;
+  bridge.bridgeNonce = bridgeNonce;
+  return bridge.evaluate().setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function include(filename) { return HtmlService.createHtmlOutputFromFile(filename).getContent(); }

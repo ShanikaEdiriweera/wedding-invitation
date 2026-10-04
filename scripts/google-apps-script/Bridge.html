@@ -3,23 +3,23 @@
 <script>
   (function () {
     var channel = 'wedding-rsvp-bridge';
-    var params = new URLSearchParams(window.location.search);
-    var allowedParent = '<?= PropertiesService.getScriptProperties().getProperty("ALLOWED_PARENT_ORIGIN") ?>';
-    if (!allowedParent || params.get('parentOrigin') !== allowedParent || window.parent === window) return;
-    var parentOrigin = allowedParent;
-    window.parent.postMessage({ channel: channel, type: 'ready' }, parentOrigin);
+    var allowedParent = '<?= allowedParentOrigin ?>';
+    var bridgeNonce = '<?= bridgeNonce ?>';
+    if (!allowedParent || !bridgeNonce || window.top === window) return;
+    var parentWindow = window.top;
+    parentWindow.postMessage({ channel: channel, type: 'ready', nonce: bridgeNonce }, allowedParent);
     window.addEventListener('message', function (event) {
-      if (event.source !== window.parent || event.origin !== parentOrigin) return;
+      if (event.source !== parentWindow || event.origin !== allowedParent) return;
       var message = event.data;
-      if (!message || message.channel !== channel || message.type !== 'request' || typeof message.id !== 'string') return;
+      if (!message || message.channel !== channel || message.type !== 'request' || message.nonce !== bridgeNonce || typeof message.id !== 'string') return;
       var methods = { getInvitation: 'rsvpBridgeGetInvitation', getRsvp: 'rsvpBridgeGetRsvp', submitRsvp: 'rsvpBridgeSubmitRsvp' };
       var method = methods[message.method];
       if (!method) return;
       var payload = message.payload || {};
       var runner = google.script.run.withSuccessHandler(function (result) {
-        window.parent.postMessage({ channel: channel, type: 'response', id: message.id, ok: true, result: result }, parentOrigin);
+        parentWindow.postMessage({ channel: channel, type: 'response', nonce: bridgeNonce, id: message.id, ok: true, result: result }, allowedParent);
       }).withFailureHandler(function () {
-        window.parent.postMessage({ channel: channel, type: 'response', id: message.id, ok: false }, parentOrigin);
+        parentWindow.postMessage({ channel: channel, type: 'response', nonce: bridgeNonce, id: message.id, ok: false }, allowedParent);
       });
       if (message.method === 'submitRsvp') runner[method](payload.token, payload.rsvp);
       else runner[method](payload.token);
