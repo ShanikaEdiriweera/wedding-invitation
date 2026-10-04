@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { invitationExperience, wedding } from '../content/wedding'
+import { invitationExperience } from '../content/wedding'
 
 type OpeningState = 'closed' | 'opening' | 'opened'
 
@@ -11,18 +11,16 @@ function requestPlayback(audio: HTMLAudioElement, onRejected: () => void) {
   }
 }
 
-export function InvitationExperience({ children }: { children: ReactNode }) {
+export function InvitationExperience({ children, guestName = 'Guest' }: { children: ReactNode; guestName?: string }) {
   const [openingState, setOpeningState] = useState<OpeningState>('closed')
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioAvailable, setAudioAvailable] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
-  const openButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (openingState === 'opened') return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    openButtonRef.current?.focus()
     return () => { document.body.style.overflow = previousOverflow }
   // Keep the lock through the closed -> opening transition; restore it only when revealed.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,27 +83,23 @@ export function InvitationExperience({ children }: { children: ReactNode }) {
       />
       {openingState !== 'opened' && (
         <div className={`envelope-intro${openingState === 'opening' ? ' envelope-intro--opening' : ''}`}>
-          <div className="envelope-intro__content">
-            <p className="eyebrow">A celebration awaits</p>
-            <p className="envelope-intro__names" aria-label={`${wedding.couple.bride.displayName} and ${wedding.couple.groom.displayName}`}>
-              {wedding.couple.bride.displayName} <span aria-hidden="true">&amp;</span> {wedding.couple.groom.displayName}
-            </p>
+          <div className="envelope-stage">
             <button
-              ref={openButtonRef}
-              className="envelope-button"
+              className="envelope-cover"
               type="button"
               onClick={openInvitation}
               disabled={openingState !== 'closed'}
-              aria-label="Open the wedding invitation"
+              aria-label={`Open the wedding invitation for ${guestName}`}
             >
-              <span className="envelope-card" aria-hidden="true">With joy, we invite you</span>
-              <span className="envelope-shape" aria-hidden="true">
-                <span className="envelope-flap" />
-                <span className="envelope-seal">&amp;</span>
+              <span className="envelope-cover__stamp" aria-hidden="true">
+                <span className="envelope-cover__stamp-mark">✿</span>
               </span>
-              <span className="envelope-cta">{openingState === 'opening' ? 'Opening invitation…' : 'Open Invitation'}</span>
+              <span className="envelope-cover__center">
+                <span className="envelope-cover__guest">Dear {guestName}</span>
+              </span>
+              <span className="envelope-cover__action">{openingState === 'opening' ? 'Opening…' : 'Click to open'}</span>
+              <span className="envelope-cover__flap" aria-hidden="true" />
             </button>
-            <p className="envelope-intro__hint">Tap anywhere on the envelope to open</p>
           </div>
         </div>
       )}

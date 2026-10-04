@@ -1,8 +1,8 @@
 import { SectionHeading } from './SectionHeading'
 import { RsvpPage } from './RsvpPage'
 
-export function RSVPCallToAction({ token }: { token?: string }) {
-  if (token) return <RsvpPage token={token} />
+export function RSVPCallToAction({ token, onGuestNameLoaded }: { token?: string; onGuestNameLoaded?: (name: string) => void }) {
+  if (token) return <RsvpPage token={token} onGuestNameLoaded={onGuestNameLoaded} />
 
   return (
     <section className="rsvp" id="rsvp" aria-labelledby="rsvp-title">

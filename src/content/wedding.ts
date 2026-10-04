@@ -37,7 +37,7 @@ export const invitationExperience = {
     src: `${import.meta.env.BASE_URL}music/wedding-music.mp3`,
     volume: 0.3,
   },
-  openingDurationMs: 1050,
+  openingDurationMs: 3000,
 } as const
 
 export const coupleDisplayName = `${wedding.couple.bride.displayName} & ${wedding.couple.groom.displayName}`
