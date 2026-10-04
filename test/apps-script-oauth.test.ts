@@ -25,6 +25,7 @@ function createAppsScript() {
   ]
   let responses: unknown[][] = [responseHeaders]
   const calls: Array<{ url: string; options: Record<string, unknown> }> = []
+  const bridgeTemplates: Array<Record<string, unknown>> = []
   let googleStatus = 200
   let refreshResult: Record<string, unknown> = { access_token: 'fresh-access-token', expires_in: 3600 }
   let authorizationResult: Record<string, unknown> = { access_token: 'new-access-token', refresh_token: 'new-refresh-token', expires_in: 3600 }
@@ -107,7 +108,11 @@ function createAppsScript() {
     HtmlService: {
       createHtmlOutput: (content: string) => ({ content, setTitle: function () { return this } }),
       createHtmlOutputFromFile: (file: string) => ({ file, setTitle: function () { return this } }),
-      createTemplateFromFile: () => ({ evaluate: () => ({ setXFrameOptionsMode: () => ({}) }) }),
+      createTemplateFromFile: () => {
+        const template: Record<string, unknown> = { evaluate: () => ({ setXFrameOptionsMode: () => ({}) }) }
+        bridgeTemplates.push(template)
+        return template
+      },
       XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
     },
     CacheService: {},
@@ -121,6 +126,7 @@ function createAppsScript() {
     context: context as Record<string, (...args: never[]) => unknown>,
     properties,
     calls,
+    bridgeTemplates,
     setRefreshResult: (value: Record<string, unknown>) => { refreshResult = value },
     setAuthorizationResult: (value: Record<string, unknown>) => { authorizationResult = value },
     setGoogleStatus: (value: number) => { googleStatus = value },
@@ -132,6 +138,31 @@ function createAppsScript() {
 }
 
 describe('Apps Script OAuth and Sheets API bridge', () => {
+  it('serves the bridge with its configured parent origin and per-load nonce', () => {
+    const script = createAppsScript()
+    script.context.doGet({ parameter: {
+      parentOrigin: 'https://example.test', bridgeNonce: '12345678-1234-4234-8234-123456789abc',
+    } })
+    expect(script.bridgeTemplates[0].allowedParentOrigin).toBe('https://example.test')
+    expect(script.bridgeTemplates[0].bridgeNonce).toBe('12345678-1234-4234-8234-123456789abc')
+  })
+
+  it('rejects bridge requests without a valid handshake nonce', () => {
+    const script = createAppsScript()
+    const result = script.context.doGet({ parameter: { parentOrigin: 'https://example.test' } }) as { content: string }
+    expect(result.content).toContain('Invalid RSVP bridge request')
+    expect(script.bridgeTemplates).toHaveLength(0)
+  })
+
+  it('rejects bridge requests from an unconfigured parent origin', () => {
+    const script = createAppsScript()
+    const result = script.context.doGet({ parameter: {
+      parentOrigin: 'https://attacker.example', bridgeNonce: '12345678-1234-4234-8234-123456789abc',
+    } }) as { content: string }
+    expect(result.content).toContain('parent origin is not allowed')
+    expect(script.bridgeTemplates).toHaveLength(0)
+  })
+
   it('keeps the hosted admin page script syntactically valid', () => {
     const html = readFileSync(resolve(process.cwd(), 'scripts/google-apps-script/Admin.html'), 'utf8')
     const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1]

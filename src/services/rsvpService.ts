@@ -56,6 +56,7 @@ const appsScriptGoogleusercontentHost = /^[a-z0-9-]+-script\.googleusercontent\.
 type BridgeEnvelope = {
   channel: 'wedding-rsvp-bridge'
   type: 'ready' | 'response'
+  nonce: string
   id?: string
   ok?: boolean
   result?: unknown
@@ -67,8 +68,10 @@ type PendingRequest = {
   timeoutId: number
 }
 
-class GoogleAppsScriptBridge implements BridgeTransport {
+export class GoogleAppsScriptBridge implements BridgeTransport {
   private iframe: HTMLIFrameElement | null = null
+  private bridgeWindow: Window | null = null
+  private bridgeNonce: string | null = null
   private frameOrigin: string | null = null
   private readyPromise: Promise<void> | null = null
   private pending = new Map<string, PendingRequest>()
@@ -87,9 +90,10 @@ class GoogleAppsScriptBridge implements BridgeTransport {
 
       this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject, timeoutId })
       try {
-        this.iframe?.contentWindow?.postMessage({
+        this.bridgeWindow?.postMessage({
           channel: 'wedding-rsvp-bridge',
           type: 'request',
+          nonce: this.bridgeNonce!,
           id,
           method,
           payload,
@@ -110,6 +114,8 @@ class GoogleAppsScriptBridge implements BridgeTransport {
       let checkReady: (event: MessageEvent<BridgeEnvelope>) => void
       const timeoutId = window.setTimeout(() => {
         this.readyPromise = null
+        this.bridgeWindow = null
+        this.bridgeNonce = null
         window.removeEventListener('message', checkReady)
         this.iframe?.remove()
         this.iframe = null
@@ -117,9 +123,12 @@ class GoogleAppsScriptBridge implements BridgeTransport {
       }, 20_000)
 
       const iframe = document.createElement('iframe')
+      const nonce = window.crypto.randomUUID()
+      this.bridgeNonce = nonce
       iframe.title = 'RSVP service connection'
       iframe.hidden = true
-      iframe.src = `${this.bridgeUrl}${this.bridgeUrl.includes('?') ? '&' : '?'}parentOrigin=${encodeURIComponent(window.location.origin)}`
+      const separator = this.bridgeUrl.includes('?') ? '&' : '?'
+      iframe.src = `${this.bridgeUrl}${separator}parentOrigin=${encodeURIComponent(window.location.origin)}&bridgeNonce=${encodeURIComponent(nonce)}`
       iframe.addEventListener('load', () => {
         // The bridge sends its authenticated ready message after its Apps Script client is available.
       }, { once: true })
@@ -127,9 +136,11 @@ class GoogleAppsScriptBridge implements BridgeTransport {
       document.body.appendChild(iframe)
 
       checkReady = (event: MessageEvent<BridgeEnvelope>) => {
-        if (event.source !== iframe.contentWindow || event.data?.channel !== 'wedding-rsvp-bridge' || event.data.type !== 'ready') return
+        if (!event.source || event.data?.channel !== 'wedding-rsvp-bridge' || event.data.type !== 'ready' || event.data.nonce !== nonce) return
         if (!isTrustedAppsScriptOrigin(event.origin)) return
         window.clearTimeout(timeoutId)
+        this.bridgeWindow = event.source as Window
+        this.bridgeNonce = nonce
         this.frameOrigin = event.origin
         window.removeEventListener('message', checkReady)
         resolve()
@@ -141,9 +152,9 @@ class GoogleAppsScriptBridge implements BridgeTransport {
   }
 
   private handleMessage = (event: MessageEvent<BridgeEnvelope>) => {
-    if (event.source !== this.iframe?.contentWindow || !this.frameOrigin || event.origin !== this.frameOrigin) return
+    if (event.source !== this.bridgeWindow || !this.bridgeWindow || !this.frameOrigin || event.origin !== this.frameOrigin) return
     const message = event.data
-    if (!message || message.channel !== 'wedding-rsvp-bridge' || message.type !== 'response' || !message.id) return
+    if (!message || message.channel !== 'wedding-rsvp-bridge' || message.type !== 'response' || message.nonce !== this.bridgeNonce || !message.id) return
     const pendingRequest = this.pending.get(message.id)
     if (!pendingRequest) return
     window.clearTimeout(pendingRequest.timeoutId)
