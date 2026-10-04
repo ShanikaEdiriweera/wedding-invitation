@@ -1,10 +1,11 @@
 import { coupleDisplayName, wedding } from '../content/wedding'
 import { formatEventDate } from '../lib/event-time'
+import { isFeatureEnabled } from '../config/featureFlags'
 
 const footerLinks = [
   { href: '#welcome', label: 'Our story' },
   { href: '#details', label: 'The day' },
-  { href: '#gallery', label: 'Gallery' },
+  ...(isFeatureEnabled('gallery') ? [{ href: '#gallery', label: 'Gallery' }] : []),
   { href: '#rsvp', label: 'RSVP' },
 ]
 
