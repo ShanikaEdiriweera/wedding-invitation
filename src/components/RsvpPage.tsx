@@ -15,10 +15,6 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
     const previousTitle = document.title
     let active = true
     document.title = `RSVP | ${coupleDisplayName}`
-    requestAnimationFrame(() => {
-      const section = document.getElementById('rsvp')
-      if (section && 'scrollIntoView' in section) section.scrollIntoView()
-    })
     let robots = document.querySelector<HTMLMetaElement>('meta[name="robots"]')
     if (!robots) { robots = document.createElement('meta'); robots.name = 'robots'; document.head.appendChild(robots) }
     robots.content = 'noindex, nofollow, noarchive'
