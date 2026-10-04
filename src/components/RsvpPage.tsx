@@ -9,7 +9,7 @@ import { RsvpServiceNotConfiguredError } from '../services/rsvpService'
 
 type LoadState = { status: 'loading' } | { status: 'not-configured' | 'not-found' | 'revoked' | 'error' } | { status: 'ready'; invitation: PublicInvitation; rsvp: RsvpRecord | null }
 
-export function RsvpPage({ token, service = rsvpService }: { token: string; service?: typeof rsvpService }) {
+export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { token: string; service?: typeof rsvpService; onGuestNameLoaded?: (name: string) => void }) {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   useEffect(() => {
     const previousTitle = document.title
@@ -27,6 +27,7 @@ export function RsvpPage({ token, service = rsvpService }: { token: string; serv
         const result = await service.getInvitation(token)
         if (!active) return
         if (result.status !== 'active') { setState({ status: result.status }); return }
+        onGuestNameLoaded?.(result.invitation.primaryGuestName)
         const response = await service.getRsvp(token)
         if (!active) return
         if (response.status !== 'active') { setState({ status: response.status }); return }
@@ -37,7 +38,7 @@ export function RsvpPage({ token, service = rsvpService }: { token: string; serv
     }
     void load()
     return () => { active = false; document.title = previousTitle }
-  }, [service, token])
+  }, [onGuestNameLoaded, service, token])
 
   return <section id="rsvp" className="rsvp rsvp--personalized" aria-labelledby="rsvp-title">
     <div className="rsvp__inner">

@@ -16,6 +16,10 @@ npm run preview
 
 The Vite base path is `/wedding-invitation/`. `public/404.html` restores direct RSVP links and refreshes on GitHub Pages. The deploy workflow runs the tests, builds `dist`, and deploys with GitHub Actions. Set **Repository Settings → Pages → Build and deployment → Source** to **GitHub Actions**.
 
+## Invitation opening music
+
+The invitation opens behind an envelope intro on every page load. The background track is `public/music/wedding-music.mp3`; replace that file to use a different track. Its URL is resolved against Vite's configured base path for GitHub Pages. If the audio cannot load or play, the invitation remains usable and the music control stays hidden.
+
 ## Project structure
 
 ```text

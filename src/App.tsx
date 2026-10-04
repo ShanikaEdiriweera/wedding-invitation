@@ -1,8 +1,9 @@
-import { useLayoutEffect } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { Footer } from './components/Footer'
 import { GalleryPreview } from './components/GalleryPreview'
 import { CouplePhoto } from './components/CouplePhoto'
 import { Header } from './components/Header'
+import { InvitationExperience } from './components/InvitationExperience'
 import { LoveStory } from './components/LoveStory'
 import { RSVPCallToAction } from './components/RSVPCallToAction'
 import { coupleFullNames, wedding } from './content/wedding'
@@ -24,6 +25,7 @@ function currentRsvpToken(): string | null {
 
 export default function App() {
   const token = currentRsvpToken()
+  const [guestName, setGuestName] = useState('Guest')
 
   useLayoutEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>('.scroll-reveal')
@@ -49,7 +51,8 @@ export default function App() {
   }
 
   return (
-    <>
+    <InvitationExperience guestName={guestName}>
+      <>
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       <main id="main">
@@ -110,9 +113,10 @@ export default function App() {
         </section>
 
         <GalleryPreview />
-        <RSVPCallToAction token={token ?? undefined} />
+        <RSVPCallToAction token={token ?? undefined} onGuestNameLoaded={setGuestName} />
       </main>
       <Footer />
-    </>
+      </>
+    </InvitationExperience>
   )
 }
