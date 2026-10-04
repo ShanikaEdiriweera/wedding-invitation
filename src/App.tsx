@@ -1,6 +1,5 @@
-import { useLayoutEffect, useState } from 'react'
+import { lazy, Suspense, useLayoutEffect, useState } from 'react'
 import { Footer } from './components/Footer'
-import { GalleryPreview } from './components/GalleryPreview'
 import { CouplePhoto } from './components/CouplePhoto'
 import { Header } from './components/Header'
 import { InvitationExperience } from './components/InvitationExperience'
@@ -8,6 +7,9 @@ import { LoveStory } from './components/LoveStory'
 import { RSVPCallToAction } from './components/RSVPCallToAction'
 import { coupleFullNames, wedding } from './content/wedding'
 import { formatEventDate } from './lib/event-time'
+import { isFeatureEnabled } from './config/featureFlags'
+
+const GalleryPreview = lazy(() => import('./components/GalleryPreview').then(({ GalleryPreview }) => ({ default: GalleryPreview })))
 
 function currentRsvpToken(): string | null {
   const base = import.meta.env.BASE_URL
@@ -112,7 +114,11 @@ export default function App() {
           </div>
         </section>
 
-        <GalleryPreview />
+        {isFeatureEnabled('gallery') && (
+          <Suspense fallback={null}>
+            <GalleryPreview />
+          </Suspense>
+        )}
         <RSVPCallToAction token={token ?? undefined} onGuestNameLoaded={setGuestName} />
       </main>
       <Footer />
