@@ -91,14 +91,22 @@ export function InvitationExperience({ children, guestName = 'Guest' }: { childr
               disabled={openingState !== 'closed'}
               aria-label={`Open the wedding invitation for ${guestName}`}
             >
-              <span className="envelope-cover__stamp" aria-hidden="true">
-                <span className="envelope-cover__stamp-mark">✿</span>
+              <span className="envelope-cover__front">
+                <span className="envelope-cover__stamp" aria-hidden="true">
+                  <span className="envelope-cover__stamp-mark">✿</span>
+                </span>
+                <span className="envelope-cover__center">
+                  <span className="envelope-cover__guest">Dear {guestName}</span>
+                </span>
+                <span className="envelope-cover__action">{openingState === 'opening' ? 'Opening…' : 'Click to open'}</span>
               </span>
-              <span className="envelope-cover__center">
-                <span className="envelope-cover__guest">Dear {guestName}</span>
+              <span className="envelope-cover__back" aria-hidden="true">
+                <span className="envelope-cover__photo">
+                  <img src={`${import.meta.env.BASE_URL}images/gallery-4.jpeg`} alt="" />
+                </span>
+                <span className="envelope-cover__back-pocket" />
+                <span className="envelope-cover__flap" />
               </span>
-              <span className="envelope-cover__action">{openingState === 'opening' ? 'Opening…' : 'Click to open'}</span>
-              <span className="envelope-cover__flap" aria-hidden="true" />
             </button>
           </div>
         </div>

@@ -31,7 +31,7 @@ describe('invitation opening experience', () => {
     fireEvent.click(opener)
     expect(play).toHaveBeenCalledTimes(1)
     expect(opener).toBeDisabled()
-    act(() => vi.advanceTimersByTime(3050))
+    act(() => vi.advanceTimersByTime(4150))
     expect(screen.queryByRole('button', { name: /Open the wedding invitation/ })).not.toBeInTheDocument()
     expect(screen.getByText('Invitation content').closest('[inert]')).toBeNull()
     expect(document.body.style.overflow).toBe('')
@@ -44,7 +44,7 @@ describe('invitation opening experience', () => {
     render(<InvitationExperience><main>Invitation content</main></InvitationExperience>)
     fireEvent.click(screen.getByRole('button', { name: /Open the wedding invitation/ }))
     expect(play).toHaveBeenCalledTimes(1)
-    act(() => vi.advanceTimersByTime(3050))
+    act(() => vi.advanceTimersByTime(4150))
     expect(screen.getByText('Invitation content')).toBeInTheDocument()
 
     const audio = document.querySelector('audio')!
@@ -62,7 +62,7 @@ describe('invitation opening experience', () => {
     vi.useFakeTimers()
     render(<InvitationExperience><main>Invitation content</main></InvitationExperience>)
     fireEvent.click(screen.getByRole('button', { name: /Open the wedding invitation/ }))
-    act(() => vi.advanceTimersByTime(3050))
+    act(() => vi.advanceTimersByTime(4150))
     fireEvent(document.querySelector('audio')!, new Event('error'))
     expect(screen.getByText('Invitation content')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /wedding music/i })).not.toBeInTheDocument()
