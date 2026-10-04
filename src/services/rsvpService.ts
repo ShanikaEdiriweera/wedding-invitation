@@ -51,10 +51,7 @@ export function createRsvpService(transport: BridgeTransport, isConfigured = tru
   }
 }
 
-const googleAppsScriptOrigins = new Set([
-  'https://script.google.com',
-  'https://script.googleusercontent.com',
-])
+const appsScriptGoogleusercontentHost = /^[a-z0-9-]+-script\.googleusercontent\.com$/i
 
 type BridgeEnvelope = {
   channel: 'wedding-rsvp-bridge'
@@ -164,5 +161,13 @@ export const rsvpService: RsvpService = bridgeTransport
   : createRsvpService({ request: async () => { throw new RsvpServiceNotConfiguredError() } }, false)
 
 export function isTrustedAppsScriptOrigin(origin: string): boolean {
-  return googleAppsScriptOrigins.has(origin)
+  try {
+    const url = new URL(origin)
+    if (url.protocol !== 'https:' || url.origin !== origin) return false
+    return url.hostname === 'script.google.com'
+      || url.hostname === 'script.googleusercontent.com'
+      || appsScriptGoogleusercontentHost.test(url.hostname)
+  } catch {
+    return false
+  }
 }
