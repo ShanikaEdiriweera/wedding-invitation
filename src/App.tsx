@@ -3,6 +3,7 @@ import { Footer } from './components/Footer'
 import { GalleryPreview } from './components/GalleryPreview'
 import { CouplePhoto } from './components/CouplePhoto'
 import { Header } from './components/Header'
+import { InvitationExperience } from './components/InvitationExperience'
 import { LoveStory } from './components/LoveStory'
 import { RSVPCallToAction } from './components/RSVPCallToAction'
 import { coupleFullNames, wedding } from './content/wedding'
@@ -49,7 +50,8 @@ export default function App() {
   }
 
   return (
-    <>
+    <InvitationExperience>
+      <>
       <a className="skip-link" href="#main">Skip to content</a>
       <Header />
       <main id="main">
@@ -113,6 +115,7 @@ export default function App() {
         <RSVPCallToAction token={token ?? undefined} />
       </main>
       <Footer />
-    </>
+      </>
+    </InvitationExperience>
   )
 }
