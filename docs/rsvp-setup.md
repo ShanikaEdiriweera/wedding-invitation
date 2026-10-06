@@ -12,7 +12,7 @@ Create a private JSON file outside version control with this shape:
 ]
 ```
 
-Run `node scripts/generate-invitations.mjs private-invitations.json invitation-import.csv`. The script generates 24 cryptographically random bytes per row and encodes each as 32 URL-safe characters. It writes import-ready CSV with restrictive local permissions. Do not commit the input, CSV, exported sheet, or tokens. The email is private to the `Invitations` sheet and is never returned to the browser. Each link is `<site-origin>/<couple-slug>/rsvp/<token>`.
+Run `node scripts/generate-invitations.mjs private-invitations.json invitation-import.csv`. The script generates 24 cryptographically random bytes per row and encodes each as 32 URL-safe characters. It writes import-ready CSV with restrictive local permissions. Do not commit the input, CSV, exported sheet, or tokens. The email is private to the `Invitations` sheet and is never returned to the browser. With the couple-name path feature disabled, each link is `<site-origin>/wedding-invitation/rsvp/<token>`.
 
 These links are bearer credentials: anyone who receives or forwards a link can view and change that invitation’s reply. There is no identity verification, account, or email collection in the guest form. Keep the guest sheet private and revoke links by setting `Active` false.
 

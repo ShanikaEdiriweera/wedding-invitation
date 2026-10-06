@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { coupleDisplayName } from '../content/wedding'
+import { coupleDisplayName } from '../config/wedding'
 
 const links = [
   { href: '#details', label: 'The day' },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Countdown } from './Countdown'
 import { RsvpForm } from './RsvpForm'
-import { coupleDisplayName } from '../content/wedding'
+import { coupleDisplayName } from '../config/wedding'
 import { rsvpService } from '../services/rsvpService'
 import { SectionHeading } from './SectionHeading'
 import type { PublicInvitation, RsvpRecord } from '../types/rsvp'

@@ -5,7 +5,7 @@ import { Header } from './components/Header'
 import { InvitationExperience } from './components/InvitationExperience'
 import { LoveStory } from './components/LoveStory'
 import { RSVPCallToAction } from './components/RSVPCallToAction'
-import { coupleFullNames, wedding } from './content/wedding'
+import { coupleFullNames, wedding } from './config/wedding'
 import { formatEventDate } from './lib/event-time'
 import { isFeatureEnabled } from './config/featureFlags'
 

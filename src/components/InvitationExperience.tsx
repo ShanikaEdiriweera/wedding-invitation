@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { invitationExperience } from '../content/wedding'
+import { invitationExperience } from '../config/wedding'
 
 type OpeningState = 'closed' | 'opening' | 'opened'
 

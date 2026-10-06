@@ -1,4 +1,4 @@
-import { coupleDisplayName, wedding } from '../content/wedding'
+import { coupleDisplayName, wedding } from '../config/wedding'
 import { formatEventDate } from '../lib/event-time'
 import { isFeatureEnabled } from '../config/featureFlags'
 
