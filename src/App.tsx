@@ -29,6 +29,13 @@ function currentRsvpToken(): string | null {
 export default function App() {
   const token = currentRsvpToken()
   const [guestName, setGuestName] = useState('Guest')
+  const parentsInvitation = isFeatureEnabled('parentsInvitation')
+  const brideSide = wedding.invitation?.parents?.brideSide
+  const groomSide = wedding.invitation?.parents?.groomSide
+  const parentInvitationText = typeof brideSide === 'string' && brideSide.trim() &&
+    typeof groomSide === 'string' && groomSide.trim()
+    ? `${brideSide} together with ${groomSide}, have the pleasure of inviting you to the wedding of their children,`
+    : null
 
   useLayoutEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>('.scroll-reveal')
@@ -61,13 +68,13 @@ export default function App() {
       <main id="main">
         <section className="hero" id="home" aria-labelledby="hero-title">
           <div className="hero__copy">
-            <p className="eyebrow hero__entrance hero__entrance--1">With joy, we invite you</p>
+            <p className="eyebrow hero__entrance hero__entrance--1">{parentsInvitation && parentInvitationText ? parentInvitationText : 'With joy, we invite you'}</p>
             <h1 id="hero-title" className="hero__title" aria-label={`${wedding.couple.bride.displayName} and ${wedding.couple.groom.displayName}`}>
               <span className="hero__name hero__entrance hero__entrance--2">{wedding.couple.bride.displayName}</span>
               <span className="hero__ampersand hero__entrance hero__entrance--3" aria-hidden="true">&amp;</span>
               <span className="hero__name hero__entrance hero__entrance--4">{wedding.couple.groom.displayName}</span>
             </h1>
-            <p className="hero__full-names hero__entrance hero__entrance--5">{coupleFullNames}</p>
+            {!parentsInvitation && <p className="hero__full-names hero__entrance hero__entrance--5">{coupleFullNames}</p>}
             <time className="hero__date hero__entrance hero__entrance--5" dateTime={wedding.eventDateTime}>{formatEventDate(wedding.eventDateTime, wedding.eventTimeZone)}</time>
             <p className="hero__intro hero__entrance hero__entrance--6">A day to gather, celebrate, and make memories together.</p>
             <a className="button button--primary hero__entrance hero__entrance--7" href="#rsvp">RSVP</a>

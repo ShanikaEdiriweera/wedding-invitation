@@ -30,6 +30,12 @@ export const wedding = {
     website: 'https://www.cinnamonhotels.com/cinnamon-grand-colombo/weddings-and-events/the-oak-room',
     map: 'https://maps.app.goo.gl/t4U2fRi4BbbqfoXp7',
   },
+  invitation: {
+    parents: {
+      brideSide: 'Mr. & Mrs. I.V.W.Ediriweera',
+      groomSide: 'Mr. C.J.Abeykoon & Dr. M.Jayasinghe',
+    },
+  },
   reachOut: {
     contacts: [
       {
