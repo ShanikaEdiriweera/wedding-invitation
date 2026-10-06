@@ -30,4 +30,16 @@ export const wedding = {
     website: 'https://www.cinnamonhotels.com/cinnamon-grand-colombo/weddings-and-events/the-oak-room',
     map: 'https://maps.app.goo.gl/t4U2fRi4BbbqfoXp7',
   },
+  reachOut: {
+    contacts: [
+      {
+        "name": "Vijitha",
+        "phone": "+94777222083"
+      },
+      {
+        "name": "Chandana",
+        "phone": "+94722247466"
+      }
+    ],
+  },
 } as const

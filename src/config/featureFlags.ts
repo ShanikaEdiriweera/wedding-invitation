@@ -1,6 +1,8 @@
-export const FEATURE_FLAGS: Record<'gallery' | 'coupleNamePath', boolean> = {
+export const FEATURE_FLAGS: Record<'gallery' | 'coupleNamePath' | 'reachOut' | 'whatsapp', boolean> = {
   gallery: false,
   coupleNamePath: false,
+  reachOut: true,
+  whatsapp: true,
 }
 
 export type FeatureName = keyof typeof FEATURE_FLAGS
