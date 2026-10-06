@@ -28,6 +28,7 @@ function currentRsvpToken(): string | null {
 export default function App() {
   const token = currentRsvpToken()
   const [guestName, setGuestName] = useState('Guest')
+  const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
 
   useLayoutEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>('.scroll-reveal')
@@ -48,7 +49,8 @@ export default function App() {
     return () => observer.disconnect()
   }, [])
 
-  if (!token && window.location.pathname !== import.meta.env.BASE_URL && window.location.pathname !== `${import.meta.env.BASE_URL}index.html`) {
+  const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/'
+  if (!token && normalizedPath !== basePath && normalizedPath !== `${basePath}/index.html`) {
     return <main className="rsvp-page"><h1>Page not found</h1><a href={import.meta.env.BASE_URL}>Return to the wedding website</a></main>
   }
 
