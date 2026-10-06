@@ -3,9 +3,9 @@
   <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Opening invitation…</title></head>
   <body><script>
     (function () {
-      var parts = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/');
-      var base = parts[0] ? '/' + parts[0] + '/' : '/';
-      var route = parts.slice(1).join('/');
+      var base = '/thushara-and-dakshin/';
+      var path = window.location.pathname;
+      var route = path.indexOf(base) === 0 ? path.slice(base.length).replace(/^\/+|\/+$/g, '') : '';
       if (/^rsvp\/[A-Za-z0-9_-]{32}$/.test(route)) {
         window.location.replace(base + '?__ghPagesRoute=' + encodeURIComponent(route));
       } else {
