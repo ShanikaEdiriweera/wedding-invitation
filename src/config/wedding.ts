@@ -1,4 +1,4 @@
-import { wedding } from './wedding-details'
+import { wedding } from '../content/wedding-details'
 import { toUrlSlug } from '../lib/url-slug'
 
 export { wedding }

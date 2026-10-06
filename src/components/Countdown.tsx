@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getCountdownParts } from '../lib/event-time'
-import { wedding } from '../content/wedding'
+import { wedding } from '../config/wedding'
 
 export function Countdown() {
   const [now, setNow] = useState(() => Date.now())
