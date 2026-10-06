@@ -5,6 +5,7 @@ import { Header } from './components/Header'
 import { InvitationExperience } from './components/InvitationExperience'
 import { LoveStory } from './components/LoveStory'
 import { RSVPCallToAction } from './components/RSVPCallToAction'
+import { ReachOut } from './components/ReachOut'
 import { coupleFullNames, wedding } from './config/wedding'
 import { formatEventDate } from './lib/event-time'
 import { isFeatureEnabled } from './config/featureFlags'
@@ -120,6 +121,7 @@ export default function App() {
           </Suspense>
         )}
         <RSVPCallToAction token={token ?? undefined} onGuestNameLoaded={setGuestName} />
+        <ReachOut />
       </main>
       <Footer />
       </>

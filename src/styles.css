@@ -88,6 +88,19 @@ h1, h2 { margin: 0; font-family: var(--font-display); font-weight: 400; }
 @keyframes photo-reveal { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 .section-shell { width: min(100% - 2.5rem, var(--content-width)); margin-inline: auto; }
+.reach-out { padding: 5rem 0; background: #E9E2D8; text-align: center; }
+.reach-out__inner h2 { font-size: clamp(2.8rem, 8vw, 4.5rem); }
+.reach-out__intro { max-width: 38rem; margin: 1rem auto 2.5rem; line-height: 1.7; }
+.reach-out__contacts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; max-width: 52rem; margin: 0 auto; padding: 0; list-style: none; }
+.reach-out__contact { padding: 1.5rem; border: 1px solid var(--color-line); background: var(--color-paper); }
+.reach-out__contact h3 { margin: 0; font-family: var(--font-display); font-size: 1.8rem; font-weight: 400; }
+.reach-out__contact p { margin: 0.5rem 0; }
+.reach-out__contact p a { text-decoration: none; }
+.reach-out__actions { display: flex; justify-content: center; gap: 1rem; }
+.reach-out__action { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border: 1px solid var(--color-line); border-radius: 50%; color: var(--color-sage-dark); transition: background-color 200ms ease, color 200ms ease; }
+.reach-out__action:hover { background: var(--color-sage-dark); color: var(--color-paper); }
+.reach-out__action svg { width: 1.15rem; height: 1.15rem; fill: currentColor; }
+.reach-out__action--whatsapp svg { width: 1.3rem; height: 1.3rem; }
 .love-note { overflow: hidden; padding: 5.5rem 1.25rem 6rem; background: #E9E2D8; text-align: center; }
 .love-note__inner { width: min(100%, 48rem); margin-inline: auto; }
 .love-note__content { width: 100%; margin-inline: auto; }
