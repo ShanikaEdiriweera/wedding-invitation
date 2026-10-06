@@ -14,7 +14,7 @@ npm run build
 npm run preview
 ```
 
-The Vite base path is `/wedding-invitation/`. `public/404.html` restores direct RSVP links and refreshes on GitHub Pages. The deploy workflow runs the tests, builds `dist`, and deploys with GitHub Actions. Set **Repository Settings → Pages → Build and deployment → Source** to **GitHub Actions**.
+The Vite base path is generated from the configured bride and groom display names. The invitation and RSVP links use that couple path, and `public/404.html` restores direct RSVP links on GitHub Pages. The build places a copy of the site under the generated couple path. The deploy workflow runs the tests, builds `dist`, and deploys with GitHub Actions. Set **Repository Settings → Pages → Build and deployment → Source** to **GitHub Actions**.
 
 ## Invitation opening music
 
