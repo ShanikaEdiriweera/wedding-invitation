@@ -312,6 +312,9 @@ h1, h2 { margin: 0; font-family: var(--font-display); font-weight: 400; }
 }
 .envelope-intro--opening { opacity: 0; visibility: hidden; }
 .envelope-stage { display: grid; width: min(86vw, 52.5rem, calc(139.5svh - 2.8rem)); aspect-ratio: 1.55; margin: auto; perspective: 1400px; }
+@media (min-width: 701px) {
+  .envelope-stage { width: min(70vw, 36rem, calc(68svh - 2rem)); }
+}
 .envelope-cover { 
   position: relative;
   display: grid;
