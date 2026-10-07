@@ -80,6 +80,10 @@ export default function App() {
             <a className="button button--primary hero__entrance hero__entrance--7" href="#rsvp">RSVP</a>
           </div>
           <CouplePhoto />
+          <a className="hero__scroll-cue" href="#welcome" aria-label="Scroll down to read our story">
+            <span>Scroll</span>
+            <span className="hero__scroll-arrow" aria-hidden="true">↓</span>
+          </a>
         </section>
 
         <LoveStory />
