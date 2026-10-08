@@ -25,12 +25,29 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
     setValues((current) => ({ ...current, guests: checked ? [...current.guests, name] : current.guests.filter((guest) => guest !== name) }))
   }
 
+  function renderAdditionalGuestFields() {
+    return Array.from({ length: extraSlots }, (_, slot) => {
+      const name = extraGuestNames[slot] ?? ''
+      return <label className="field" key={slot}>Additional guest {slot + 1}
+        <input type="text" maxLength={RSVP_LIMITS.guestName} value={name} onChange={(event) => {
+          const extras = [...extraGuestNames]
+          extras[slot] = event.target.value
+          setValues((current) => ({ ...current, guests: [...current.guests.filter((guest) => namedGuests.includes(guest)), ...extras] }))
+        }} placeholder="Guest name" />
+      </label>
+    })
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setResult(null)
     const submission: RsvpSubmission = {
       attending: values.attendance === 'yes',
-      guests: values.attendance === 'yes' ? values.guests.filter((name) => name.trim()).map((name) => ({ name: name.trim() })) : [],
+      guests: values.attendance === 'yes'
+        ? (namedGuests.length === 1
+          ? [namedGuests[0], ...extraGuestNames]
+          : values.guests).filter((name) => name.trim()).map((name) => ({ name: name.trim() }))
+        : [],
       dietaryRequirements: values.dietaryRequirements.trim(), songRequest: values.songRequest.trim(), message: values.message.trim(),
       honeypot: new FormData(event.currentTarget).get('website')?.toString() ?? '',
     }
@@ -52,19 +69,13 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
       <label className="choice"><input type="radio" name="attendance" value="no" checked={values.attendance === 'no'} onChange={() => setValues((v) => ({ ...v, attendance: 'no', guests: [] }))} /> Regretfully declines</label>
       {errors.attendance && <p className="field-error" role="alert">{errors.attendance}</p>}
     </fieldset>
-    {values.attendance === 'yes' && <fieldset><legend>Who will attend?</legend>
+    {values.attendance === 'yes' && namedGuests.length > 1 && <fieldset><legend>Who will attend?</legend>
       {namedGuests.map((name) => <label className="choice" key={name}><input type="checkbox" checked={attendingNames.has(name.trim().toLowerCase())} onChange={(event) => setGuest(name, event.target.checked)} /> {name}</label>)}
-      {Array.from({ length: extraSlots }, (_, slot) => {
-        const name = extraGuestNames[slot] ?? ''
-        return <label className="field" key={slot}>Additional guest {slot + 1}
-          <input type="text" maxLength={RSVP_LIMITS.guestName} value={name} onChange={(event) => {
-            const extras = [...extraGuestNames]
-            extras[slot] = event.target.value
-            setValues((current) => ({ ...current, guests: [...current.guests.filter((guest) => namedGuests.includes(guest)), ...extras] }))
-          }} placeholder="Guest name" />
-        </label>
-      })}
-      <p className="field-hint">Please select only those who can attend.</p>
+      {renderAdditionalGuestFields()}
+      {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
+    </fieldset>}
+    {values.attendance === 'yes' && namedGuests.length === 1 && extraSlots > 0 && <fieldset><legend>Additional guests</legend>
+      {renderAdditionalGuestFields()}
       {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
     </fieldset>}
     {isFeatureEnabled('dietaryRequirements') && <label className="field">Dietary requirements <span>Optional</span><textarea maxLength={RSVP_LIMITS.dietaryRequirements} value={values.dietaryRequirements} onChange={(e) => setValues((v) => ({ ...v, dietaryRequirements: e.target.value }))} rows={3} />{errors.dietaryRequirements && <small className="field-error">{errors.dietaryRequirements}</small>}</label>}
