@@ -117,7 +117,6 @@ export default function App() {
                   </div>
                 </dl>
                 <div className="venue-links" aria-label="Venue links">
-                  <a className="text-link" href={wedding.venue.website}>Venue information</a>
                   <a className="text-link" href={wedding.venue.map}>View map</a>
                 </div>
                 <a className="button button--primary details__rsvp scroll-reveal scroll-reveal--delay-3" href="#rsvp">RSVP</a>

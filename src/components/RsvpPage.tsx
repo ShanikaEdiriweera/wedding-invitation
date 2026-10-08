@@ -46,7 +46,7 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
       {state.status === 'revoked' && <p className="rsvp-message" role="alert">This invitation is no longer active. Please contact the couple if you have questions.</p>}
       {state.status === 'error' && <p className="rsvp-message" role="alert">We couldn’t load your invitation. Please try again later.</p>}
       {state.status === 'ready' && <RsvpForm key={token} token={token} invitation={state.invitation} existing={state.rsvp} service={service} />}
-      <div className="rsvp-page__event"><h2>Counting down to guest arrival</h2><p>9.00am · Colombo time</p><Countdown /></div>
+      <div className="rsvp-page__event"><h2>Counting down to our special day</h2><Countdown /></div>
     </div>
   </section>
 }
