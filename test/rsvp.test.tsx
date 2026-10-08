@@ -66,6 +66,18 @@ describe('invitation RSVP page', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(/thank you/i)
   })
 
+  it('skips attendee selection for a single-person invitation and includes the primary guest on acceptance', async () => {
+    const singleInvitation = { primaryGuestName: 'A Guest', invitedGuestNames: [], maxGuests: 1 }
+    ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', invitation: singleInvitation, rsvp: null })
+    render(<RsvpPage token={token} service={service} />)
+    await screen.findByText(/Dear A Guest/)
+    fireEvent.click(screen.getByLabelText('Joyfully accepts'))
+    expect(screen.queryByText('Who will attend?')).not.toBeInTheDocument()
+    expect(screen.queryByText(/You may invite up to/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Send RSVP' }))
+    await waitFor(() => expect(service.submitRsvp).toHaveBeenCalledWith(token, expect.objectContaining({ attending: true, guests: [{ name: 'A Guest' }] })))
+  })
+
   it('validates attendance and preserves form on submission failure', async () => {
     ;(service.submitRsvp as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
     render(<RsvpPage token={token} service={service} />)
