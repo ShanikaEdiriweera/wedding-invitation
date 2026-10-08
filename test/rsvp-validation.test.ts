@@ -11,7 +11,7 @@ describe('RSVP validation', () => {
   })
   it('validates limits and text lengths', () => {
     expect(validateRsvpSubmission('a'.repeat(32), invitation, good)).toEqual({})
-    expect(validateRsvpSubmission('a'.repeat(32), { ...invitation, maxGuests: 1 }, good).guests).toMatch(/exceeds/i)
+    expect(validateRsvpSubmission('a'.repeat(32), { ...invitation, invitedGuestNames: ['One', 'Two'], maxGuests: 1 }, good).guests).toMatch(/exceeds/i)
     expect(validateRsvpSubmission('a'.repeat(32), { ...invitation, maxGuests: 21 }, good).guests).toMatch(/invalid guest limit/i)
     expect(validateRsvpSubmission('a'.repeat(32), invitation, { ...good, message: 'x'.repeat(1001) }).message).toMatch(/characters/i)
     expect(validateRsvpSubmission('a'.repeat(32), invitation, { ...good, dietaryRequirements: 'x'.repeat(501) }).dietaryRequirements).toMatch(/characters/i)

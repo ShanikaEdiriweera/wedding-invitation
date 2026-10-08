@@ -33,7 +33,7 @@ export const wedding = {
   invitation: {
     parents: {
       brideSide: 'Mr. & Mrs. I.V.W.Ediriweera',
-      groomSide: 'Mr. C.J.Abeykoon & Dr. M.Jayasinghe',
+      groomSide: 'Mr. C.J.Abeykoon & Dr.(Mrs.) M.Jayasinghe',
     },
   },
   reachOut: {

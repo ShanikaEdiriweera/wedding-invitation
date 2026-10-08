@@ -34,16 +34,18 @@ export function validateRsvpSubmission(
       return errors
     }
   }
-  if (new Set([invitation.primaryGuestName, ...invitation.invitedGuestNames].map(normaliseName)).size !== invitation.invitedGuestNames.length + 1) {
+  const namedInvitees = invitation.invitedGuestNames.length
+    ? invitation.invitedGuestNames
+    : [invitation.primaryGuestName]
+  if (new Set(namedInvitees.map(normaliseName)).size !== namedInvitees.length) {
     errors.guests = 'The invitation contains duplicate guest names. Please contact the couple.'
     return errors
   }
-  if (invitation.invitedGuestNames.length + 1 > invitation.maxGuests) {
+  if (namedInvitees.length > invitation.maxGuests) {
     errors.guests = 'The invitation guest list exceeds its limit. Please contact the couple.'
     return errors
   }
 
-  const namedInvitees = [invitation.primaryGuestName, ...invitation.invitedGuestNames]
   const additionalGuestSlots = invitation.maxGuests - namedInvitees.length
   const uniqueAttendingGuests = new Set(data.guests.map((guest) => normaliseName(guest.name)))
 

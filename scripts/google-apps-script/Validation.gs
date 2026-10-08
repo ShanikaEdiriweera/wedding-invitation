@@ -5,9 +5,10 @@ var RsvpValidation = (function () {
     var errors = [];
     if (!invitation || invitation.active !== true) return ['invitation'];
     if (!Number.isInteger(invitation.maxGuests) || invitation.maxGuests < 1 || invitation.maxGuests > LIMITS.maxGuests) errors.push('limit');
-    var invited = [invitation.primaryGuestName].concat(invitation.invitedGuestNames || []);
-    if (invited.some(function (name) { return typeof name !== 'string' || !name.trim() || name.length > LIMITS.name; })) errors.push('invitationNames');
-    if (invited.length > invitation.maxGuests) errors.push('invitationLimit');
+    var listedGuests = invitation.invitedGuestNames || [];
+    var participants = listedGuests.length ? listedGuests : [invitation.primaryGuestName];
+    if ([invitation.primaryGuestName].concat(listedGuests).some(function (name) { return typeof name !== 'string' || !name.trim() || name.length > LIMITS.name; })) errors.push('invitationNames');
+    if (participants.length > invitation.maxGuests) errors.push('invitationLimit');
     if (!rsvp || typeof rsvp.attending !== 'boolean' || !Array.isArray(rsvp.guests)) errors.push('structure');
     else if (rsvp.attending) {
       if (!rsvp.guests.length || rsvp.guests.length > invitation.maxGuests) errors.push('guests');
@@ -19,9 +20,9 @@ var RsvpValidation = (function () {
         var key = name.toLocaleLowerCase();
         if (seen[key]) errors.push('duplicate');
         seen[key] = true;
-        if (invited.every(function (entry) { return entry.toLocaleLowerCase() !== key; })) additional += 1;
+        if (participants.every(function (entry) { return entry.toLocaleLowerCase() !== key; })) additional += 1;
       });
-      if (additional > invitation.maxGuests - invited.length) errors.push('extraGuests');
+      if (additional > invitation.maxGuests - participants.length) errors.push('extraGuests');
     } else if (rsvp.guests.length) errors.push('declineGuests');
     [['dietaryRequirements', LIMITS.dietary], ['songRequest', LIMITS.song], ['message', LIMITS.message]].forEach(function (pair) {
       if (typeof rsvp[pair[0]] !== 'string' || rsvp[pair[0]].length > pair[1]) errors.push(pair[0]);
