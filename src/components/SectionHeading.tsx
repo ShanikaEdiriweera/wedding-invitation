@@ -1,5 +1,5 @@
 type SectionHeadingProps = {
-  eyebrow: string
+  eyebrow?: string
   title: string
   id: string
   align?: 'left' | 'center'
@@ -8,7 +8,7 @@ type SectionHeadingProps = {
 export function SectionHeading({ eyebrow, title, id, align = 'left' }: SectionHeadingProps) {
   return (
     <div className={`section-heading section-heading--${align} scroll-reveal`}>
-      <p className="eyebrow">{eyebrow}</p>
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
       <h2 id={id}>{title}</h2>
     </div>
   )

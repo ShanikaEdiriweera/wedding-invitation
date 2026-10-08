@@ -48,7 +48,7 @@ img { display: block; max-width: 100%; }
 .hero__copy { position: relative; z-index: 1; text-align: center; }
 .hero__copy { color: #394638; }
 .hero .eyebrow { color: #394638; }
-.eyebrow { margin: 0 0 1rem; color: var(--color-sage-dark); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.2em; line-height: 1.6; text-transform: uppercase; }
+.eyebrow { margin: 0 0 1rem; color: var(--color-sage-dark); font-size: 0.66rem; font-weight: 400; letter-spacing: 0.2em; line-height: 1.6; text-transform: uppercase; }
 h1, h2 { margin: 0; font-family: var(--font-display); font-weight: 400; }
 .hero__title { display: flex; flex-direction: column; align-items: center; margin-inline: auto; font-size: clamp(4rem, 17vw, 6.6rem); line-height: 0.77; }
 .hero__name { display: block; max-width: 100%; white-space: nowrap; }
@@ -65,6 +65,9 @@ h1, h2 { margin: 0; font-family: var(--font-display); font-weight: 400; }
 .hero .button--primary { background: #4F5C4A; color: #F8F6F0; }
 .hero .button--primary:hover { background: #394638; }
 .hero__photo { align-self: center; width: 100%; max-width: none; aspect-ratio: 2 / 3; height: auto; margin: 0 auto; animation: photo-reveal 950ms cubic-bezier(.22,1,.36,1) both; }
+.hero__scroll-cue { position: absolute; right: 50%; bottom: 1rem; display: grid; justify-items: center; gap: 0.25rem; color: var(--color-sage-dark); font-size: 0.58rem; letter-spacing: 0.18em; text-decoration: none; text-transform: uppercase; transform: translateX(50%); }
+.hero__scroll-arrow { font-size: 1.3rem; line-height: 1; animation: scroll-cue-bob 1.5s ease-in-out infinite; }
+@keyframes scroll-cue-bob { 50% { transform: translateY(0.3rem); } }
 .hero__image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1200ms cubic-bezier(.22,1,.36,1); }
 .hero__image--first { opacity: 1; }
 .hero__photo--second .hero__image--first { opacity: 0; }
@@ -312,6 +315,9 @@ h1, h2 { margin: 0; font-family: var(--font-display); font-weight: 400; }
 }
 .envelope-intro--opening { opacity: 0; visibility: hidden; }
 .envelope-stage { display: grid; width: min(86vw, 52.5rem, calc(139.5svh - 2.8rem)); aspect-ratio: 1.55; margin: auto; perspective: 1400px; }
+@media (min-width: 701px) {
+  .envelope-stage { width: min(70vw, 36rem, calc(68svh - 2rem)); }
+}
 .envelope-cover { 
   position: relative;
   display: grid;

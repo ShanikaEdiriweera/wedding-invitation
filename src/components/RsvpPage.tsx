@@ -38,7 +38,7 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
 
   return <section id="rsvp" className="rsvp rsvp--personalized" aria-labelledby="rsvp-title">
     <div className="rsvp__inner">
-      <SectionHeading eyebrow="You’re invited" title="Kindly reply" id="rsvp-title" align="center" />
+      <SectionHeading title="Save the date" id="rsvp-title" align="center" />
       <p>Please let us know if you can join us.</p>
       {state.status === 'loading' && <p className="rsvp-message" role="status">Loading your invitation…</p>}
       {state.status === 'not-configured' && <p className="rsvp-message" role="status">Online replies are not open yet. Please check back soon.</p>}
@@ -46,7 +46,7 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
       {state.status === 'revoked' && <p className="rsvp-message" role="alert">This invitation is no longer active. Please contact the couple if you have questions.</p>}
       {state.status === 'error' && <p className="rsvp-message" role="alert">We couldn’t load your invitation. Please try again later.</p>}
       {state.status === 'ready' && <RsvpForm key={token} token={token} invitation={state.invitation} existing={state.rsvp} service={service} />}
-      <div className="rsvp-page__event"><h2>Counting down to guest arrival</h2><p>9.00am · Colombo time</p><Countdown /></div>
+      <div className="rsvp-page__event"><h2>Counting down to our special day</h2><Countdown /></div>
     </div>
   </section>
 }
