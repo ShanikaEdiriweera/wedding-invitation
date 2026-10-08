@@ -7,8 +7,8 @@ import { RsvpServiceNotConfiguredError } from '../src/services/rsvpService'
 import { FEATURE_FLAGS } from '../src/config/featureFlags'
 
 const token = 'a'.repeat(32)
-const invitation = { primaryGuestName: 'A Guest', invitedGuestNames: ['B Guest'], maxGuests: 3 }
-const record = { invitationToken: token, rsvpId: 'id', submittedAt: '2026-01-01', updatedAt: '2026-01-01', attending: true, guests: [{ name: 'A Guest' }], dietaryRequirements: 'Veg', songRequest: '', message: '' }
+const invitation = { primaryGuestName: 'A Guest', invitedGuestNames: ['B Guest', 'C Guest'], maxGuests: 3 }
+const record = { invitationToken: token, rsvpId: 'id', submittedAt: '2026-01-01', updatedAt: '2026-01-01', attending: true, guests: [{ name: 'B Guest' }], dietaryRequirements: 'Veg', songRequest: '', message: '' }
 let service: RsvpService
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
@@ -27,7 +27,7 @@ beforeEach(() => {
 describe('invitation RSVP page', () => {
   it('hides optional RSVP fields when their features are disabled and shows them when enabled', async () => {
     const { rerender } = render(<RsvpPage token={token} service={service} />)
-    await screen.findByText(/Dear A Guest and B Guest/)
+    await screen.findByText(/Dear A Guest/)
     expect(screen.queryByLabelText(/Dietary requirements/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/A song for the celebration/)).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/A message for the couple/)).not.toBeInTheDocument()
@@ -57,12 +57,12 @@ describe('invitation RSVP page', () => {
 
   it('accepts partial attendance with an unnamed guest and creates a response', async () => {
     render(<RsvpPage token={token} service={service} />)
-    await screen.findByText(/Dear A Guest and B Guest/)
+    await screen.findByText(/Dear A Guest/)
     fireEvent.click(screen.getByLabelText('Joyfully accepts'))
-    fireEvent.click(screen.getByLabelText('A Guest'))
-    fireEvent.change(screen.getByPlaceholderText('Guest name'), { target: { value: 'C Guest' } })
+    fireEvent.click(screen.getByLabelText('B Guest'))
+    fireEvent.change(screen.getByPlaceholderText('Guest name'), { target: { value: 'D Guest' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send RSVP' }))
-    await waitFor(() => expect(service.submitRsvp).toHaveBeenCalledWith(token, expect.objectContaining({ attending: true, guests: [{ name: 'A Guest' }, { name: 'C Guest' }] })))
+    await waitFor(() => expect(service.submitRsvp).toHaveBeenCalledWith(token, expect.objectContaining({ attending: true, guests: [{ name: 'B Guest' }, { name: 'D Guest' }] })))
     expect(await screen.findByRole('status')).toHaveTextContent(/thank you/i)
   })
 
@@ -81,7 +81,7 @@ describe('invitation RSVP page', () => {
   it('validates attendance and preserves form on submission failure', async () => {
     ;(service.submitRsvp as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
     render(<RsvpPage token={token} service={service} />)
-    await screen.findByText(/Dear A Guest and B Guest/)
+    await screen.findByText(/Dear A Guest/)
     fireEvent.click(screen.getByRole('button', { name: 'Send RSVP' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/choose whether/i)
     fireEvent.click(screen.getByLabelText('Regretfully declines'))
@@ -95,7 +95,7 @@ describe('invitation RSVP page', () => {
     ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', invitation, rsvp: record })
     render(<RsvpPage token={token} service={service} />)
     expect(await screen.findByText(/we have your reply/i)).toBeInTheDocument()
-    expect(screen.getByLabelText('A Guest')).toBeChecked()
+    expect(screen.getByLabelText('B Guest')).toBeChecked()
     expect(screen.getByLabelText('Dietary requirements Optional')).toHaveValue('Veg')
     expect(screen.getByRole('button', { name: 'Update RSVP' })).toBeInTheDocument()
   })

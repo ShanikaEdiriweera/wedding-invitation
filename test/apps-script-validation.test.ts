@@ -20,7 +20,7 @@ describe('Apps Script validation source', () => {
   })
   it('enforces guest counts and text-length bounds', () => {
     expect(validation.validate(invitation, submission)).toEqual([])
-    expect(validation.validate({ ...invitation, maxGuests: 1 }, submission)).toContain('invitationLimit')
+    expect(validation.validate({ ...invitation, invitedGuestNames: ['One', 'Two'], maxGuests: 1 }, submission)).toContain('invitationLimit')
     expect(validation.validate(invitation, { ...submission, guests: [{ name: 'Primary' }, { name: 'Extra' }, { name: 'Another' }] })).toContain('guests')
     expect(validation.validate(invitation, { ...submission, songRequest: 'x'.repeat(121) })).toContain('songRequest')
     expect(validation.validate(invitation, { ...submission, dietaryRequirements: 'x'.repeat(501) })).toContain('dietaryRequirements')

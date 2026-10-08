@@ -9,14 +9,23 @@ const emptyValues: FormValues = { attendance: '', guests: [], dietaryRequirement
 
 export function RsvpForm({ token, invitation, existing, service }: { token: string; invitation: PublicInvitation; existing: RsvpRecord | null; service: RsvpService }) {
   const initialValues = useMemo<FormValues>(() => existing ? {
-    attendance: existing.attending ? 'yes' : 'no', guests: existing.guests.map((guest) => guest.name),
+    attendance: existing.attending ? 'yes' : 'no', guests: existing.guests
+      .map((guest) => guest.name)
+      // Older replies may have stored a household salutation as an attendee.
+      .filter((name) => !invitation.invitedGuestNames.length
+        || invitation.invitedGuestNames.some((invitee) => invitee.trim().toLowerCase() === name.trim().toLowerCase())
+        || name.trim().toLowerCase() !== invitation.primaryGuestName.trim().toLowerCase()),
     dietaryRequirements: existing.dietaryRequirements, songRequest: existing.songRequest, message: existing.message,
   } : emptyValues, [existing])
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<'success' | 'failure' | null>(null)
-  const namedGuests = [invitation.primaryGuestName, ...invitation.invitedGuestNames]
+  // A non-empty invited guest list contains the actual RSVP participants. The
+  // primary name can then be a household salutation used only for the greeting.
+  const namedGuests = invitation.invitedGuestNames.length
+    ? invitation.invitedGuestNames
+    : [invitation.primaryGuestName]
   const extraSlots = Math.max(0, invitation.maxGuests - namedGuests.length)
   const extraGuestNames = values.guests.filter((name) => !namedGuests.includes(name))
   const attendingNames = new Set(values.guests.map((name) => name.trim().toLowerCase()))
@@ -62,7 +71,7 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
   }
 
   return <form className="rsvp-form" onSubmit={handleSubmit} noValidate>
-    <p className="rsvp-form__welcome">Dear {namedGuests.join(' and ')}</p>
+    <p className="rsvp-form__welcome">Dear {invitation.primaryGuestName}</p>
     {existing && <p className="rsvp-form__note">We have your reply. You can update it below.</p>}
     <fieldset><legend>Will you be joining us?</legend>
       <label className="choice"><input type="radio" name="attendance" value="yes" checked={values.attendance === 'yes'} onChange={() => setValues((v) => ({ ...v, attendance: 'yes' }))} /> Joyfully accepts</label>
