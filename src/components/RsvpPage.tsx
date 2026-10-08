@@ -38,7 +38,7 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
 
   return <section id="rsvp" className="rsvp rsvp--personalized" aria-labelledby="rsvp-title">
     <div className="rsvp__inner">
-      <SectionHeading eyebrow="You’re invited" title="Kindly reply" id="rsvp-title" align="center" />
+      <SectionHeading title="Save the date" id="rsvp-title" align="center" />
       <p>Please let us know if you can join us.</p>
       {state.status === 'loading' && <p className="rsvp-message" role="status">Loading your invitation…</p>}
       {state.status === 'not-configured' && <p className="rsvp-message" role="status">Online replies are not open yet. Please check back soon.</p>}
