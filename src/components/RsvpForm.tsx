@@ -28,7 +28,7 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
   function renderAdditionalGuestFields() {
     return Array.from({ length: extraSlots }, (_, slot) => {
       const name = extraGuestNames[slot] ?? ''
-      return <label className="field" key={slot}>Additional guest {slot + 1}
+      return <label className="field" key={slot}>Invitee {namedGuests.length + slot + 1}
         <input type="text" maxLength={RSVP_LIMITS.guestName} value={name} onChange={(event) => {
           const extras = [...extraGuestNames]
           extras[slot] = event.target.value
