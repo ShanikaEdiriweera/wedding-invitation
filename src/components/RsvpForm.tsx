@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { validateRsvpSubmission, RSVP_LIMITS } from '../lib/rsvp-validation'
 import type { PublicInvitation, RsvpRecord, RsvpService, RsvpSubmission } from '../types/rsvp'
+import { isFeatureEnabled } from '../config/featureFlags'
 
 type Attendance = '' | 'yes' | 'no'
 type FormValues = { attendance: Attendance; guests: string[]; dietaryRequirements: string; songRequest: string; message: string }
@@ -44,7 +45,7 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
   }
 
   return <form className="rsvp-form" onSubmit={handleSubmit} noValidate>
-    <p className="rsvp-form__welcome">For {namedGuests.join(' and ')}</p>
+    <p className="rsvp-form__welcome">Dear {namedGuests.join(' and ')}</p>
     {existing && <p className="rsvp-form__note">We have your reply. You can update it below.</p>}
     <fieldset><legend>Will you be joining us?</legend>
       <label className="choice"><input type="radio" name="attendance" value="yes" checked={values.attendance === 'yes'} onChange={() => setValues((v) => ({ ...v, attendance: 'yes' }))} /> Joyfully accepts</label>
@@ -66,9 +67,9 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
       <p className="field-hint">Please select only those who can attend. You may invite up to {extraSlots} additional {extraSlots === 1 ? 'guest' : 'guests'}.</p>
       {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
     </fieldset>}
-    <label className="field">Dietary requirements <span>Optional</span><textarea maxLength={RSVP_LIMITS.dietaryRequirements} value={values.dietaryRequirements} onChange={(e) => setValues((v) => ({ ...v, dietaryRequirements: e.target.value }))} rows={3} />{errors.dietaryRequirements && <small className="field-error">{errors.dietaryRequirements}</small>}</label>
-    <label className="field">A song for the celebration <span>Optional</span><input type="text" maxLength={RSVP_LIMITS.songRequest} value={values.songRequest} onChange={(e) => setValues((v) => ({ ...v, songRequest: e.target.value }))} />{errors.songRequest && <small className="field-error">{errors.songRequest}</small>}</label>
-    <label className="field">A message for the couple <span>Optional</span><textarea maxLength={RSVP_LIMITS.message} value={values.message} onChange={(e) => setValues((v) => ({ ...v, message: e.target.value }))} rows={4} />{errors.message && <small className="field-error">{errors.message}</small>}</label>
+    {isFeatureEnabled('dietaryRequirements') && <label className="field">Dietary requirements <span>Optional</span><textarea maxLength={RSVP_LIMITS.dietaryRequirements} value={values.dietaryRequirements} onChange={(e) => setValues((v) => ({ ...v, dietaryRequirements: e.target.value }))} rows={3} />{errors.dietaryRequirements && <small className="field-error">{errors.dietaryRequirements}</small>}</label>}
+    {isFeatureEnabled('songRequest') && <label className="field">A song for the celebration <span>Optional</span><input type="text" maxLength={RSVP_LIMITS.songRequest} value={values.songRequest} onChange={(e) => setValues((v) => ({ ...v, songRequest: e.target.value }))} />{errors.songRequest && <small className="field-error">{errors.songRequest}</small>}</label>}
+    {isFeatureEnabled('coupleMessage') && <label className="field">A message for the couple <span>Optional</span><textarea maxLength={RSVP_LIMITS.message} value={values.message} onChange={(e) => setValues((v) => ({ ...v, message: e.target.value }))} rows={4} />{errors.message && <small className="field-error">{errors.message}</small>}</label>}
     <label className="rsvp-form__trap" aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>
     <button className="button button--primary rsvp-form__submit" type="submit" disabled={submitting}>{submitting ? 'Sending…' : existing ? 'Update RSVP' : 'Send RSVP'}</button>
     {result === 'success' && <p role="status">Thank you. Your reply has been saved.</p>}
