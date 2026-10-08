@@ -4,6 +4,7 @@ import { RsvpPage } from '../src/components/RsvpPage'
 import { Countdown } from '../src/components/Countdown'
 import type { RsvpService } from '../src/types/rsvp'
 import { RsvpServiceNotConfiguredError } from '../src/services/rsvpService'
+import { FEATURE_FLAGS } from '../src/config/featureFlags'
 
 const token = 'a'.repeat(32)
 const invitation = { primaryGuestName: 'A Guest', invitedGuestNames: ['B Guest'], maxGuests: 3 }
@@ -12,6 +13,9 @@ let service: RsvpService
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 beforeEach(() => {
+  FEATURE_FLAGS.dietaryRequirements = false
+  FEATURE_FLAGS.songRequest = false
+  FEATURE_FLAGS.coupleMessage = false
   service = {
     isConfigured: true,
     getInvitation: vi.fn().mockResolvedValue({ status: 'active', invitation }),
@@ -21,6 +25,22 @@ beforeEach(() => {
 })
 
 describe('invitation RSVP page', () => {
+  it('hides optional RSVP fields when their features are disabled and shows them when enabled', async () => {
+    const { rerender } = render(<RsvpPage token={token} service={service} />)
+    await screen.findByText(/Dear A Guest and B Guest/)
+    expect(screen.queryByLabelText(/Dietary requirements/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/A song for the celebration/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/A message for the couple/)).not.toBeInTheDocument()
+
+    FEATURE_FLAGS.dietaryRequirements = true
+    FEATURE_FLAGS.songRequest = true
+    FEATURE_FLAGS.coupleMessage = true
+    rerender(<RsvpPage token={token} service={service} />)
+    expect(screen.getByLabelText(/Dietary requirements/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/A song for the celebration/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/A message for the couple/)).toBeInTheDocument()
+  })
+
   it('shows not configured, missing and revoked invitation states', async () => {
     ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ status: 'not-found' })
     const { unmount } = render(<RsvpPage token={token} service={service} />)
@@ -37,7 +57,7 @@ describe('invitation RSVP page', () => {
 
   it('accepts partial attendance with an unnamed guest and creates a response', async () => {
     render(<RsvpPage token={token} service={service} />)
-    await screen.findByText('For A Guest and B Guest')
+    await screen.findByText(/Dear A Guest and B Guest/)
     fireEvent.click(screen.getByLabelText('Joyfully accepts'))
     fireEvent.click(screen.getByLabelText('A Guest'))
     fireEvent.change(screen.getByPlaceholderText('Guest name'), { target: { value: 'C Guest' } })
@@ -49,7 +69,7 @@ describe('invitation RSVP page', () => {
   it('validates attendance and preserves form on submission failure', async () => {
     ;(service.submitRsvp as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
     render(<RsvpPage token={token} service={service} />)
-    await screen.findByText('For A Guest and B Guest')
+    await screen.findByText(/Dear A Guest and B Guest/)
     fireEvent.click(screen.getByRole('button', { name: 'Send RSVP' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/choose whether/i)
     fireEvent.click(screen.getByLabelText('Regretfully declines'))
@@ -59,6 +79,7 @@ describe('invitation RSVP page', () => {
   })
 
   it('loads an existing response for updating', async () => {
+    FEATURE_FLAGS.dietaryRequirements = true
     ;(service.getRsvp as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', rsvp: record })
     render(<RsvpPage token={token} service={service} />)
     expect(await screen.findByText(/we have your reply/i)).toBeInTheDocument()
