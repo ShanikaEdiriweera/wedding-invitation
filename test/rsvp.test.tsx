@@ -18,7 +18,7 @@ beforeEach(() => {
   FEATURE_FLAGS.coupleMessage = false
   service = {
     isConfigured: true,
-    getInvitation: vi.fn().mockResolvedValue({ status: 'active', invitation }),
+    getInvitation: vi.fn().mockResolvedValue({ status: 'active', invitation, rsvp: null }),
     getRsvp: vi.fn().mockResolvedValue({ status: 'active', rsvp: null }),
     submitRsvp: vi.fn().mockResolvedValue({ status: 'saved', rsvp: record }),
   }
@@ -80,7 +80,7 @@ describe('invitation RSVP page', () => {
 
   it('loads an existing response for updating', async () => {
     FEATURE_FLAGS.dietaryRequirements = true
-    ;(service.getRsvp as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', rsvp: record })
+    ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', invitation, rsvp: record })
     render(<RsvpPage token={token} service={service} />)
     expect(await screen.findByText(/we have your reply/i)).toBeInTheDocument()
     expect(screen.getByLabelText('A Guest')).toBeChecked()
@@ -88,8 +88,16 @@ describe('invitation RSVP page', () => {
     expect(screen.getByRole('button', { name: 'Update RSVP' })).toBeInTheDocument()
   })
 
-  it('submits a decline without attendees when updating a prior acceptance', async () => {
+  it('falls back to the older separate RSVP lookup response', async () => {
+    ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', invitation })
     ;(service.getRsvp as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', rsvp: record })
+    render(<RsvpPage token={token} service={service} />)
+    expect(await screen.findByText(/we have your reply/i)).toBeInTheDocument()
+    expect(service.getRsvp).toHaveBeenCalledWith(token)
+  })
+
+  it('submits a decline without attendees when updating a prior acceptance', async () => {
+    ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', invitation, rsvp: record })
     render(<RsvpPage token={token} service={service} />)
     await screen.findByText(/we have your reply/i)
     fireEvent.click(screen.getByLabelText('Regretfully declines'))

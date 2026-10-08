@@ -24,10 +24,12 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
         if (!active) return
         if (result.status !== 'active') { setState({ status: result.status }); return }
         onGuestNameLoaded?.(result.invitation.primaryGuestName)
-        const response = await service.getRsvp(token)
+        const existingRsvp = result.rsvp === undefined
+          ? await service.getRsvp(token)
+          : { status: 'active' as const, rsvp: result.rsvp }
         if (!active) return
-        if (response.status !== 'active') { setState({ status: response.status }); return }
-        setState({ status: 'ready', invitation: result.invitation, rsvp: response.rsvp })
+        if (existingRsvp.status !== 'active') { setState({ status: existingRsvp.status }); return }
+        setState({ status: 'ready', invitation: result.invitation, rsvp: existingRsvp.rsvp })
       } catch (error) {
         if (active) setState({ status: error instanceof RsvpServiceNotConfiguredError ? 'not-configured' : 'error' })
       }
@@ -39,7 +41,6 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
   return <section id="rsvp" className="rsvp rsvp--personalized" aria-labelledby="rsvp-title">
     <div className="rsvp__inner">
       <SectionHeading title="Save the date" id="rsvp-title" align="center" />
-      <p>Please let us know if you can join us.</p>
       {state.status === 'loading' && <p className="rsvp-message" role="status">Loading your invitation…</p>}
       {state.status === 'not-configured' && <p className="rsvp-message" role="status">Online replies are not open yet. Please check back soon.</p>}
       {state.status === 'not-found' && <p className="rsvp-message" role="alert">This invitation link could not be found. Please contact the couple for help.</p>}

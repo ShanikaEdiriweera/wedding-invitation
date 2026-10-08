@@ -25,14 +25,23 @@ function doGet(e) {
 function include(filename) { return HtmlService.createHtmlOutputFromFile(filename).getContent(); }
 
 function rsvpBridgeGetInvitation(token) {
-  var invitation = findInvitation_(token);
+  if (!RsvpValidation.isToken(token)) return { status: 'not-found' };
+  var ranges = readSheetRanges_(['Invitations!A:H', 'Responses!A:J']);
+  var invitation = null;
+  for (var i = 1; i < ranges[0].length; i++) {
+    if (String(ranges[0][i][0]) === token) { invitation = invitationFromRow_(ranges[0][i]); break; }
+  }
   if (!invitation) return { status: 'not-found' };
   if (!invitation.active) return { status: 'revoked' };
+  var rsvp = null;
+  for (var j = 1; j < ranges[1].length; j++) {
+    if (String(ranges[1][j][0]) === token) { rsvp = responseFromRow_(ranges[1][j]); break; }
+  }
   return { status: 'active', invitation: {
     primaryGuestName: invitation.primaryGuestName,
     invitedGuestNames: invitation.invitedGuestNames,
     maxGuests: invitation.maxGuests
-  } };
+  }, rsvp: rsvp };
 }
 
 function rsvpBridgeGetRsvp(token) {
@@ -66,10 +75,10 @@ function rsvpBridgeSubmitRsvp(token, rsvp) {
       submittedAt: previous ? String(previous[2]) : now,
       updatedAt: now,
       attending: rsvp.attending,
-      guests: rsvp.attending ? rsvp.guests.map(function (guest) { return { name: String(guest.name).trim() }; }) : [],
+      guests: rsvp.attending ? rsvp.guests.map(function (guest) { return { name: String(guest.name).trim() }; }) : [{ name: invitation.primaryGuestName }],
       dietaryRequirements: rsvp.dietaryRequirements.trim(), songRequest: rsvp.songRequest.trim(), message: rsvp.message.trim()
     };
-    var row = [token, record.rsvpId, record.submittedAt, now, record.attending, record.guests.length, JSON.stringify(record.guests), record.dietaryRequirements, record.songRequest, record.message];
+    var row = [token, record.rsvpId, record.submittedAt, now, record.attending, record.attending ? record.guests.length : 0, JSON.stringify(record.guests), record.dietaryRequirements, record.songRequest, record.message];
     if (existingRow > 0) writeSheetRow_('Responses!A' + existingRow + ':J' + existingRow, row);
     else appendSheetRow_('Responses!A:J', row);
     return { status: 'saved', rsvp: record };
@@ -84,33 +93,41 @@ function findInvitation_(token) {
   if (!RsvpValidation.isToken(token)) return null;
   var rows = readSheetRange_('Invitations!A:H');
   for (var i = 1; i < rows.length; i++) if (String(rows[i][0]) === token) {
-    var guests;
-    try { guests = JSON.parse(String(rows[i][3] || '[]')); } catch (e) { return null; }
-    if (!Array.isArray(guests)) return null;
-    return { invitationToken: String(rows[i][0]), primaryGuestName: String(rows[i][1]), email: String(rows[i][2]), invitedGuestNames: guests, maxGuests: Number(rows[i][4]), active: rows[i][5] === true || String(rows[i][5]).toLowerCase() === 'true' };
+    return invitationFromRow_(rows[i]);
   }
   return null;
+}
+
+function invitationFromRow_(row) {
+  var guests;
+  try { guests = JSON.parse(String(row[3] || '[]')); } catch (e) { return null; }
+  if (!Array.isArray(guests)) return null;
+  return { invitationToken: String(row[0]), primaryGuestName: String(row[1]), email: String(row[2]), invitedGuestNames: guests, maxGuests: Number(row[4]), active: row[5] === true || String(row[5]).toLowerCase() === 'true' };
 }
 
 function responseFromRow_(row) {
   var guests;
   try { guests = JSON.parse(String(row[6] || '[]')); } catch (e) { guests = []; }
+  if (!(row[4] === true || String(row[4]).toLowerCase() === 'true')) guests = [];
   return { invitationToken: String(row[0]), rsvpId: String(row[1]), submittedAt: String(row[2]), updatedAt: String(row[3]), attending: row[4] === true || String(row[4]).toLowerCase() === 'true', guests: guests, dietaryRequirements: String(row[7] || ''), songRequest: String(row[8] || ''), message: String(row[9] || '') };
 }
 
 function readSheetRange_(range) {
-  ensureSpreadsheetReady_();
   var response = sheetsRequest_('get', 'values/' + encodeURIComponent(range));
   return response.values || [];
 }
 
+function readSheetRanges_(ranges) {
+  var query = 'values:batchGet?' + ranges.map(function (range) { return 'ranges=' + encodeURIComponent(range); }).join('&');
+  var response = sheetsRequest_('get', query);
+  return (response.valueRanges || []).map(function (range) { return range.values || []; });
+}
+
 function writeSheetRow_(range, row) {
-  ensureSpreadsheetReady_();
   sheetsRequest_('put', 'values/' + encodeURIComponent(range) + '?valueInputOption=RAW', { range: range, majorDimension: 'ROWS', values: [row] });
 }
 
 function appendSheetRow_(range, row) {
-  ensureSpreadsheetReady_();
   sheetsRequest_('post', 'values/' + encodeURIComponent(range) + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', { majorDimension: 'ROWS', values: [row] });
 }
 
@@ -118,6 +135,9 @@ function ensureSpreadsheetReady_() {
   var properties = PropertiesService.getScriptProperties();
   var id = properties.getProperty('SPREADSHEET_ID');
   if (!id || !/^[A-Za-z0-9_-]{20,}$/.test(id)) throw new Error('RSVP sheet is not connected.');
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'RSVP_SHEET_READY_' + id;
+  if (cache.get(cacheKey) === '1') return { id: id, name: properties.getProperty('SPREADSHEET_NAME') || '' };
   var token = googleAccessToken_();
   var metadata = googleApiRequest_(token, 'get', encodeURIComponent(id) + '?fields=spreadsheetId,properties(title),sheets(properties(title))');
   var names = (metadata.sheets || []).map(function (sheet) { return sheet.properties && sheet.properties.title; });
@@ -127,6 +147,7 @@ function ensureSpreadsheetReady_() {
   if (!sameHeaders_(ranges[0] && ranges[0].values && ranges[0].values[0], INVITATION_HEADERS) ||
       !sameHeaders_(ranges[1] && ranges[1].values && ranges[1].values[0], RESPONSE_HEADERS)) throw new Error('RSVP sheet headers do not match.');
   properties.setProperty('SPREADSHEET_NAME', String(metadata.properties && metadata.properties.title || ''));
+  cache.put(cacheKey, '1', 300);
   return { id: id, name: String(metadata.properties && metadata.properties.title || '') };
 }
 

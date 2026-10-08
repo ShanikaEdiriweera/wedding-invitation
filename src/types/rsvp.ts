@@ -34,7 +34,7 @@ export type RsvpSubmission = Omit<RsvpRecord, 'invitationToken' | 'rsvpId' | 'su
 }
 
 export type InvitationLookup =
-  | { status: 'active'; invitation: PublicInvitation }
+  | { status: 'active'; invitation: PublicInvitation; rsvp?: RsvpRecord | null }
   | { status: 'not-found' }
   | { status: 'revoked' }
 

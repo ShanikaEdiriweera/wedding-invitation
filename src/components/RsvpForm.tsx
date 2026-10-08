@@ -64,7 +64,7 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
           }} placeholder="Guest name" />
         </label>
       })}
-      <p className="field-hint">Please select only those who can attend. You may invite up to {extraSlots} additional {extraSlots === 1 ? 'guest' : 'guests'}.</p>
+      <p className="field-hint">Please select only those who can attend.</p>
       {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
     </fieldset>}
     {isFeatureEnabled('dietaryRequirements') && <label className="field">Dietary requirements <span>Optional</span><textarea maxLength={RSVP_LIMITS.dietaryRequirements} value={values.dietaryRequirements} onChange={(e) => setValues((v) => ({ ...v, dietaryRequirements: e.target.value }))} rows={3} />{errors.dietaryRequirements && <small className="field-error">{errors.dietaryRequirements}</small>}</label>}
