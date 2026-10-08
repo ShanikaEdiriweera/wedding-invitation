@@ -24,10 +24,12 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
         if (!active) return
         if (result.status !== 'active') { setState({ status: result.status }); return }
         onGuestNameLoaded?.(result.invitation.primaryGuestName)
-        const response = await service.getRsvp(token)
+        const existingRsvp = result.rsvp === undefined
+          ? await service.getRsvp(token)
+          : { status: 'active' as const, rsvp: result.rsvp }
         if (!active) return
-        if (response.status !== 'active') { setState({ status: response.status }); return }
-        setState({ status: 'ready', invitation: result.invitation, rsvp: response.rsvp })
+        if (existingRsvp.status !== 'active') { setState({ status: existingRsvp.status }); return }
+        setState({ status: 'ready', invitation: result.invitation, rsvp: existingRsvp.rsvp })
       } catch (error) {
         if (active) setState({ status: error instanceof RsvpServiceNotConfiguredError ? 'not-configured' : 'error' })
       }

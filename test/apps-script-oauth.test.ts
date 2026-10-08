@@ -26,6 +26,7 @@ function createAppsScript() {
   let responses: unknown[][] = [responseHeaders]
   const calls: Array<{ url: string; options: Record<string, unknown> }> = []
   const bridgeTemplates: Array<Record<string, unknown>> = []
+  const scriptCache = new Map<string, string>()
   let googleStatus = 200
   let refreshResult: Record<string, unknown> = { access_token: 'fresh-access-token', expires_in: 3600 }
   let authorizationResult: Record<string, unknown> = { access_token: 'new-access-token', refresh_token: 'new-refresh-token', expires_in: 3600 }
@@ -81,7 +82,8 @@ function createAppsScript() {
           } else if (url.includes('?fields=')) {
             body = metadata
           } else if (url.includes('values:batchGet')) {
-            body = { valueRanges: headers.map((values) => ({ values: [values] })) }
+            if (decodeURIComponent(url).includes('A1:H1')) body = { valueRanges: headers.map((values) => ({ values: [values] })) }
+            else body = { valueRanges: [invitations, responses].map((values) => ({ values })) }
           } else if (url.includes('/values/')) {
             const rawRange = decodeURIComponent(url.split('/values/')[1].split('?')[0])
             if (rawRange.startsWith('Invitations!')) body = { values: invitations }
@@ -115,7 +117,7 @@ function createAppsScript() {
       },
       XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
     },
-    CacheService: {},
+    CacheService: { getScriptCache: () => ({ get: (key: string) => scriptCache.get(key) || null, put: (key: string, value: string) => { scriptCache.set(key, value) } }) },
     RsvpValidation: {
       isToken: (value: unknown) => typeof value === 'string' && /^[A-Za-z0-9_-]{32}$/.test(value),
       validate: (_invitation: unknown, rsvp: Record<string, unknown>) => rsvp && typeof rsvp.attending === 'boolean' && Array.isArray(rsvp.guests) ? [] : ['invalid'],
@@ -252,6 +254,10 @@ describe('Apps Script OAuth and Sheets API bridge', () => {
     const invitationResult = script.context.rsvpBridgeGetInvitation(token) as { status: string; invitation: { primaryGuestName: string } }
     expect(invitationResult.status).toBe('active')
     expect(invitationResult.invitation.primaryGuestName).toBe('Primary Guest')
+    expect(invitationResult.rsvp).toBeNull()
+    expect(script.calls.filter(({ url }) => url.includes('sheets.googleapis.com'))).toHaveLength(3)
+    script.context.rsvpBridgeGetInvitation(token)
+    expect(script.calls.filter(({ url }) => url.includes('sheets.googleapis.com'))).toHaveLength(4)
 
     const submission = {
       attending: true,
@@ -271,6 +277,18 @@ describe('Apps Script OAuth and Sheets API bridge', () => {
     expect(script.getResponses()[1][2]).toBe(originalSubmittedAt)
     expect(script.calls.some(({ url, options }) => url.includes(':append?') && options.method === 'post')).toBe(true)
     expect(script.calls.some(({ url, options }) => decodeURIComponent(url).includes('Responses!A2:J2') && options.method === 'put')).toBe(true)
+  })
+
+  it('records the primary guest name in the sheet for declined RSVPs without changing website RSVP data', () => {
+    const script = createAppsScript()
+    const submission = { attending: false, guests: [], dietaryRequirements: '', songRequest: '', message: '' }
+    script.context.rsvpBridgeSubmitRsvp(token, submission)
+
+    const row = script.getResponses()[1]
+    expect(row[4]).toBe(false)
+    expect(row[5]).toBe(0)
+    expect(JSON.parse(String(row[6]))).toEqual([{ name: 'Primary Guest' }])
+    expect(script.context.rsvpBridgeGetRsvp(token).rsvp.guests).toEqual([])
   })
 
   it('returns generic guest submission errors when Sheets API access fails', () => {
