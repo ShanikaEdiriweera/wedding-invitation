@@ -43,8 +43,8 @@ export function RsvpPage({ token, service = rsvpService, onGuestNameLoaded }: { 
       <SectionHeading title="Save the date" id="rsvp-title" align="center" />
       {state.status === 'loading' && <p className="rsvp-message" role="status">Loading your invitation…</p>}
       {state.status === 'not-configured' && <p className="rsvp-message" role="status">Online replies are not open yet. Please check back soon.</p>}
-      {state.status === 'not-found' && <p className="rsvp-message" role="alert">This invitation link could not be found. Please contact the couple for help.</p>}
-      {state.status === 'revoked' && <p className="rsvp-message" role="alert">This invitation is no longer active. Please contact the couple if you have questions.</p>}
+      {state.status === 'not-found' && <p className="rsvp-message" role="alert">This invitation link could not be found. Please contact us for help.</p>}
+      {state.status === 'revoked' && <p className="rsvp-message" role="alert">This invitation is no longer active. Please contact us if you have questions.</p>}
       {state.status === 'error' && <p className="rsvp-message" role="alert">We couldn’t load your invitation. Please try again later.</p>}
       {state.status === 'ready' && <RsvpForm key={token} token={token} invitation={state.invitation} existing={state.rsvp} service={service} />}
       <div className="rsvp-page__event"><h2>Counting down to our special day</h2><Countdown /></div>
