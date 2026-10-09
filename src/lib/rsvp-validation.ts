@@ -23,14 +23,14 @@ export function validateRsvpSubmission(
 
   if (!validToken) errors.attendance = 'This invitation link is invalid.'
   if (!Number.isInteger(invitation.maxGuests) || invitation.maxGuests < 1 || invitation.maxGuests > RSVP_LIMITS.maxGuestsPerInvitation) {
-    errors.guests = 'This invitation has an invalid guest limit. Please contact the couple.'
+    errors.guests = 'This invitation has an invalid guest limit. Please contact us for help.'
     return errors
   }
   if (data.honeypot?.trim()) errors.attendance = 'We could not save this RSVP. Please try again.'
 
   for (const guestName of [invitation.primaryGuestName, ...invitation.invitedGuestNames]) {
     if (!guestName.trim() || guestName.length > RSVP_LIMITS.guestName) {
-      errors.guests = 'The invitation contains an invalid guest name. Please contact the couple.'
+      errors.guests = 'The invitation contains an invalid guest name. Please contact us for help.'
       return errors
     }
   }
@@ -38,11 +38,11 @@ export function validateRsvpSubmission(
     ? invitation.invitedGuestNames
     : [invitation.primaryGuestName]
   if (new Set(namedInvitees.map(normaliseName)).size !== namedInvitees.length) {
-    errors.guests = 'The invitation contains duplicate guest names. Please contact the couple.'
+    errors.guests = 'The invitation contains duplicate guest names. Please contact us for help.'
     return errors
   }
   if (namedInvitees.length > invitation.maxGuests) {
-    errors.guests = 'The invitation guest list exceeds its limit. Please contact the couple.'
+    errors.guests = 'The invitation guest list exceeds its limit. Please contact us for help.'
     return errors
   }
 
