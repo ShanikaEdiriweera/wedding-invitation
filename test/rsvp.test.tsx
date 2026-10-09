@@ -78,6 +78,19 @@ describe('invitation RSVP page', () => {
     await waitFor(() => expect(service.submitRsvp).toHaveBeenCalledWith(token, expect.objectContaining({ attending: true, guests: [{ name: 'A Guest' }] })))
   })
 
+  it('shows the only listed invitee as a checkbox when the invitation allows additional guests', async () => {
+    const oneInviteeInvitation = { primaryGuestName: 'The Ediriweera Family', invitedGuestNames: ['Jayantha Ediriweera'], maxGuests: 3 }
+    ;(service.getInvitation as ReturnType<typeof vi.fn>).mockResolvedValue({ status: 'active', invitation: oneInviteeInvitation, rsvp: null })
+    render(<RsvpPage token={token} service={service} />)
+    await screen.findByText(/Dear The Ediriweera Family/)
+    fireEvent.click(screen.getByLabelText('Joyfully accepts'))
+    expect(screen.getByText('Who will attend?')).toBeInTheDocument()
+    expect(screen.getByLabelText('Jayantha Ediriweera')).not.toBeChecked()
+    fireEvent.click(screen.getByLabelText('Jayantha Ediriweera'))
+    fireEvent.click(screen.getByRole('button', { name: 'Send RSVP' }))
+    await waitFor(() => expect(service.submitRsvp).toHaveBeenCalledWith(token, expect.objectContaining({ attending: true, guests: [{ name: 'Jayantha Ediriweera' }] })))
+  })
+
   it('validates attendance and preserves form on submission failure', async () => {
     ;(service.submitRsvp as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('network'))
     render(<RsvpPage token={token} service={service} />)

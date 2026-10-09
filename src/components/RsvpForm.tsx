@@ -27,6 +27,7 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
     ? invitation.invitedGuestNames
     : [invitation.primaryGuestName]
   const extraSlots = Math.max(0, invitation.maxGuests - namedGuests.length)
+  const showAttendeeSelection = invitation.maxGuests > 1 && invitation.invitedGuestNames.length > 0
   const extraGuestNames = values.guests.filter((name) => !namedGuests.includes(name))
   const attendingNames = new Set(values.guests.map((name) => name.trim().toLowerCase()))
 
@@ -53,7 +54,7 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
     const submission: RsvpSubmission = {
       attending: values.attendance === 'yes',
       guests: values.attendance === 'yes'
-        ? (namedGuests.length === 1
+        ? (!showAttendeeSelection && namedGuests.length === 1
           ? [namedGuests[0], ...extraGuestNames]
           : values.guests).filter((name) => name.trim()).map((name) => ({ name: name.trim() }))
         : [],
@@ -78,12 +79,12 @@ export function RsvpForm({ token, invitation, existing, service }: { token: stri
       <label className="choice"><input type="radio" name="attendance" value="no" checked={values.attendance === 'no'} onChange={() => setValues((v) => ({ ...v, attendance: 'no', guests: [] }))} /> Regretfully declines</label>
       {errors.attendance && <p className="field-error" role="alert">{errors.attendance}</p>}
     </fieldset>
-    {values.attendance === 'yes' && namedGuests.length > 1 && <fieldset><legend>Who will attend?</legend>
+    {values.attendance === 'yes' && showAttendeeSelection && <fieldset><legend>Who will attend?</legend>
       {namedGuests.map((name) => <label className="choice" key={name}><input type="checkbox" checked={attendingNames.has(name.trim().toLowerCase())} onChange={(event) => setGuest(name, event.target.checked)} /> {name}</label>)}
       {renderAdditionalGuestFields()}
       {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
     </fieldset>}
-    {values.attendance === 'yes' && namedGuests.length === 1 && extraSlots > 0 && <fieldset><legend>Additional guests</legend>
+    {values.attendance === 'yes' && !showAttendeeSelection && namedGuests.length === 1 && extraSlots > 0 && <fieldset><legend>Additional guests</legend>
       {renderAdditionalGuestFields()}
       {errors.guests && <p className="field-error" role="alert">{errors.guests}</p>}
     </fieldset>}
